@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('./partials/head.ejs', { description: 'welcome to miku.hatsune.lol, meow' }) %>
+    <script src="public/scripts/index.js?v=<%= css %>" lang="javascript"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="center-container">
+        <h1>welcome to <span class="blue">miku.hatsune.lol</span></h1>
+        <p align="left">
+          This is essentially a file sharing service, for me and a couple
+          friends
+        </p>
+        <p align="left">
+          Right now, it's
+          <span class="blue">an invite-only</span> service, if you want to use
+          it, contact me at
+          <a href="https://specifix.dev/" target="_blank">my website</a>
+          and give a good reason why and I'll probably consider.
+        </p>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+          <!-- Access key -->
+          <input type="text" id="key" name="key" placeholder="Enter access key (the one i gave you)" required />
+
+          <!-- File picker -->
+          <label id="fileLabel" for="file">📂 Browse File... (Max 64MB)</label>
+          <input type="file" id="file" name="file" required hidden />
+
+          <span class="underline" id="file-name">No file selected</span>
+
+          <!-- Submit -->
+          <button id="uploadButton" type="submit" disabled>Upload</button>
+        </form>
+
+        <img src="public/miku_ascii.png">
+      </div>
+    </div>
+  </body>
+</html>
