@@ -65,6 +65,7 @@ label {
 }
 
 input[type='text'],
+input[type='password'],
 input[type='file'] {
   padding: 0.5rem;
   background: transparent;
