@@ -25,10 +25,13 @@ export const upload = async ({ request }: { request: Request }) => {
   // Random ID
   const id = randomBytes(6).toString('base64url');
   const ext = extname(file.name) || '.png';
+  const filePath = path.join(UPLOADS_DIR, `./${id}${ext}`);
+
+  console.log(`Attempting to save ${file.name} as ${id}${ext} to: ${filePath}`);
 
   // Save file
   const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(UPLOADS_DIR, `./${id}${ext}`), buf);
+  await writeFile(filePath, buf);
 
   const urlOut = `${BASE_URL}/${id}`;
   return new Response(JSON.stringify({ url: urlOut }), {
