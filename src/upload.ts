@@ -1,8 +1,8 @@
 import { randomBytes } from 'crypto';
 import { writeFile } from 'fs/promises';
-import { extname } from 'path';
+import path, { extname } from 'path';
 import { CheckIfKeyValid } from './utils/keys';
-import { BASE_URL } from './utils/constants';
+import { BASE_URL, UPLOADS_DIR } from './utils/constants';
 
 export const upload = async ({ request }: { request: Request }) => {
   const url = new URL(request.url);
@@ -28,7 +28,7 @@ export const upload = async ({ request }: { request: Request }) => {
 
   // Save file
   const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(`./uploads/${id}${ext}`, buf);
+  await writeFile(path.join(UPLOADS_DIR, `./uploads/${id}${ext}`), buf);
 
   const urlOut = `${BASE_URL}/${id}`;
   return new Response(JSON.stringify({ url: urlOut }), {
