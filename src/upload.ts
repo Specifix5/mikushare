@@ -28,7 +28,7 @@ export const upload = async ({ request }: { request: Request }) => {
 
   // Save file
   const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(UPLOADS_DIR, `./uploads/${id}${ext}`), buf);
+  await writeFile(path.join(UPLOADS_DIR, `./${id}${ext}`), buf);
 
   const urlOut = `${BASE_URL}/${id}`;
   return new Response(JSON.stringify({ url: urlOut }), {
