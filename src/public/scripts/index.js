@@ -52,13 +52,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (data.url) {
-        // Copy to clipboard
-        await navigator.clipboard.writeText(data.url);
+        try {
+          // Copy to clipboard
+          await navigator.clipboard.writeText(data.url);
+          alert(`☑️ File uploaded! URL copied to clipboard:\n${data.url}`);
+        } catch (err) {
+          console.error('Failed to copy to clipboard:', err);
+          alert(`❌ Failed to copy to clipboard: ${err.message}`);
+        }
         fileName.innerHTML = `<a href="${data.url}" target="_blank">${data.url}</a>`;
 
         fileInput.value = '';
-
-        alert(`File uploaded!\nURL copied to clipboard:\n${data.url}`);
       } else {
         throw new Error('No URL in response');
       }
