@@ -16,7 +16,8 @@ import { FailedToInsertUserError, KeyCollisionError } from './errors';
 import { readdir } from 'fs/promises';
 import { UPLOADS_DIR } from '../utils/constants';
 import path, { basename, extname } from 'path';
-import { stat } from 'fs/promises';
+import { stat, exists } from 'fs/promises';
+import { mkdir } from 'fs/promises';
 
 // init sqlite
 const sqlite = new Database('database.db');
@@ -323,74 +324,81 @@ export const init_db = async () => {
   }
 
   // Migrate Users
-  const keysFile = await readFile('./keys', 'utf-8');
+  if (await exists('./keys')) {
+    const keysFile = await readFile('./keys', 'utf-8');
 
-  if (keysFile) {
-    warn('KeyMigrator', 'Keys exists! Migrating keys file to db.');
-    const keys = keysFile.split('\n');
-    if (keys.length <= 0) {
-      warn('KeyMigrator', 'There is nothing to do.');
-      return;
-    }
-    for (const key of keys) {
-      await withTransaction(async (tx) => {
-        if (!(await keyExists(tx, key))) {
-          const newUser = key.split('_')[0];
-          if (newUser) {
-            info('KeyMigrator', `Migrating key ${key} to user ${newUser}`);
-            const { user, id } = await createUser(tx, newUser, key);
-            if (user) {
-              info(
-                'KeyMigrator',
-                `ID #${id} Successfully migrated key ${key} to user ${user}`,
-              );
-            } else {
-              error(
-                'KeyMigrator',
-                `Failed to migrate key ${key} to user ${newUser}`,
-              );
+    if (keysFile) {
+      warn('KeyMigrator', 'Keys exists! Migrating keys file to db.');
+      const keys = keysFile.split('\n');
+      if (keys.length <= 0) {
+        warn('KeyMigrator', 'There is nothing to do.');
+        return;
+      }
+      for (const key of keys) {
+        await withTransaction(async (tx) => {
+          if (!(await keyExists(tx, key))) {
+            const newUser = key.split('_')[0];
+            if (newUser) {
+              info('KeyMigrator', `Migrating key ${key} to user ${newUser}`);
+              const { user, id } = await createUser(tx, newUser, key);
+              if (user) {
+                info(
+                  'KeyMigrator',
+                  `ID #${id} Successfully migrated key ${key} to user ${user}`,
+                );
+              } else {
+                error(
+                  'KeyMigrator',
+                  `Failed to migrate key ${key} to user ${newUser}`,
+                );
+              }
             }
+          }
+        });
+      }
+
+      warn('KeyMigrator', `Finished migrating users!`);
+    }
+  }
+
+  // Migrate File metadata
+  if (await exists(UPLOADS_DIR)) {
+    const files = await readdir(UPLOADS_DIR);
+    if (files.length > 0) {
+      warn('FileMigrator', `Migrating files now...`);
+    } else {
+      warn('FileMigrator', 'There is nothing to do');
+    }
+    for (const file of files) {
+      const ext = extname(file);
+      const fileName = basename(file, ext);
+      const size = (await stat(path.join(UPLOADS_DIR, file))).size;
+      if (fileName.length === 36) continue; // Skip new files
+
+      await withTransaction(async (tx) => {
+        if (!(await getFile(tx, fileName))) {
+          info('FileMigrator', `Trying to migrate ${fileName}`);
+          const { key } = await addFileWithKey(
+            tx,
+            anonymousUser.id,
+            fileName,
+            `${fileName}${ext}`,
+            size,
+          );
+
+          if (key) {
+            info(
+              'FileMigrator',
+              `Successfully migrated ${fileName} to db, owned by user anonymous ${anonymousUser.id}`,
+            );
           }
         }
       });
     }
 
-    warn('KeyMigrator', `Finished migrating users!`);
-  }
-
-  // Migrate File metadata
-  const files = await readdir(UPLOADS_DIR);
-  if (files.length > 0) {
-    warn('FileMigrator', `Migrating files now...`);
+    warn('FileMigrator', `Finished migrating files!`);
   } else {
-    warn('FileMigrator', 'There is nothing to do');
+    await mkdir(UPLOADS_DIR);
+    warn('FileMigrator', `Created uploads directory at ${UPLOADS_DIR}`);
   }
-  for (const file of files) {
-    const ext = extname(file);
-    const fileName = basename(file, ext);
-    const size = (await stat(path.join(UPLOADS_DIR, file))).size;
-    if (fileName.length === 36) continue; // Skip new files
-
-    await withTransaction(async (tx) => {
-      if (!(await getFile(tx, fileName))) {
-        info('FileMigrator', `Trying to migrate ${fileName}`);
-        const { key } = await addFileWithKey(
-          tx,
-          anonymousUser.id,
-          fileName,
-          `${fileName}${ext}`,
-          size,
-        );
-
-        if (key) {
-          info(
-            'FileMigrator',
-            `Successfully migrated ${fileName} to db, owned by user anonymous ${anonymousUser.id}`,
-          );
-        }
-      }
-    });
-  }
-
-  warn('FileMigrator', `Finished migrating files!`);
 };

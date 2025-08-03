@@ -6,13 +6,7 @@ import { render } from './utils/render';
 import staticPlugin from '@elysiajs/static';
 import { UploadHandler } from './upload';
 import { info, init_cli } from './cli';
-import { existsSync, mkdirSync } from 'fs';
 import { GetFileHandler } from './getFile';
-
-if (!existsSync(UPLOADS_DIR)) {
-  info('Main', 'Creating uploads directory');
-  mkdirSync(UPLOADS_DIR);
-}
 
 const app = new Elysia()
   .use(staticPlugin({ assets: 'dist/public' }))
