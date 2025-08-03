@@ -25,7 +25,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
     return new Response('File too large (max 64MB)', { status: 413 });
   }
 
-  const { key } = await withTransaction(async (tx) => {
+  const { key, filename } = await withTransaction(async (tx) => {
     const user = await getUserFromKey(tx, accessKey);
 
     if (!user) {
@@ -53,7 +53,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
   });
 
   const urlOut = `${BASE_URL}/${key}`;
-  return new Response(JSON.stringify({ url: urlOut }), {
+  return new Response(JSON.stringify({ url: urlOut, filename }), {
     headers: { 'Content-Type': 'application/json' },
   });
 };
