@@ -8,3 +8,5 @@ export const UPLOADS_DIR =
 export const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
 export const WEB_NAME =
   BASE_URL.replace(/^https?:\/\/([^\/]+).*/, '$1') ?? 'miku share';
+
+export const SHOULD_REDIRECT = process.env.SHOULD_REDIRECT === 'true';

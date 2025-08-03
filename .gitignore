@@ -36,3 +36,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 keys
 uploads
 build-tools/*.sh
+
+*.db
+*.sqlite
+
+drizzle

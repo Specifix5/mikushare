@@ -3,12 +3,15 @@ import { writeFile } from 'fs/promises';
 import path, { extname } from 'path';
 import { CheckIfKeyValid } from './utils/keys';
 import { BASE_URL, UPLOADS_DIR } from './utils/constants';
+import { addFile, getUserFromKey, withTransaction } from './db/client';
+import { FileCreateError, UserNotFoundError } from './db/errors';
+import { error } from './cli';
 
-export const upload = async ({ request }: { request: Request }) => {
+export const UploadHandler = async ({ request }: { request: Request }) => {
   const url = new URL(request.url);
-  const key = url.searchParams.get('key');
+  const accessKey = url.searchParams.get('key');
 
-  if (!(await CheckIfKeyValid(key || ''))) {
+  if (!accessKey || !(await CheckIfKeyValid(accessKey))) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -22,18 +25,34 @@ export const upload = async ({ request }: { request: Request }) => {
     return new Response('File too large (max 64MB)', { status: 413 });
   }
 
-  // Random ID
-  const id = randomBytes(6).toString('base64url');
-  const ext = extname(file.name) || '.png';
-  const filePath = path.join(UPLOADS_DIR, `./${id}${ext}`);
+  const { key } = await withTransaction(async (tx) => {
+    const user = await getUserFromKey(tx, accessKey);
 
-  console.log(`Attempting to save ${file.name} as ${id}${ext} to: ${filePath}`);
+    if (!user) {
+      throw new UserNotFoundError(key);
+    }
 
-  // Save file
-  const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buf);
+    const ext = extname(file.name) || '.png';
+    const fileMetadata = await addFile(tx, user.id, ext, file.size);
 
-  const urlOut = `${BASE_URL}/${id}`;
+    if (!fileMetadata) {
+      throw new FileCreateError();
+    }
+
+    const filePath = path.join(UPLOADS_DIR, `./${fileMetadata.filename}`);
+
+    console.log(
+      `Attempting to save ${file.name} as ${fileMetadata.key} to: ${filePath}`,
+    );
+
+    // Save file
+    const buf = Buffer.from(await file.arrayBuffer());
+    await writeFile(filePath, buf);
+
+    return fileMetadata;
+  });
+
+  const urlOut = `${BASE_URL}/${key}`;
   return new Response(JSON.stringify({ url: urlOut }), {
     headers: { 'Content-Type': 'application/json' },
   });
