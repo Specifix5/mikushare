@@ -53,7 +53,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
   });
 
   const urlOut = `${BASE_URL}/${key}`;
-  return new Response(JSON.stringify({ url: urlOut, filename }), {
+  return new Response(JSON.stringify({ url: urlOut, filename: filename }), {
     headers: { 'Content-Type': 'application/json' },
   });
 };
