@@ -44,13 +44,42 @@ div.center-container {
   max-width: 500px;
   text-align: center;
 
+  margin: auto;
+
   padding: 20px;
 }
 
-div.center-container img {
+div.paragraph-container {
+  padding: 0em;
+  padding-top: 0.25em;
+  padding-left: 1em;
+  padding-right: 1em;
+  margin-bottom: 1em;
+  border: 1px solid var(--accent-color);
+}
+
+div.paragraph-container p {
+  text-wrap: pretty;
+  word-wrap: break-word;
+}
+
+div.flex-list {
+  margin-top: 1em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  justify-content: center;
+}
+
+div.flex-list img.big {
   width: 100%;
   height: auto;
   max-width: 340px;
+}
+
+span.nobreak {
+  display: inline-block;
 }
 
 form {
@@ -68,10 +97,9 @@ input[type='text'],
 input[type='password'],
 input[type='file'] {
   padding: 0.5rem;
-  background: transparent;
+  background: #181825;
   color: var(--text-color);
   border: none;
-  border-bottom: 1px solid var(--accent-color);
   font-family: 'JetBrains Mono';
 }
 
@@ -83,7 +111,7 @@ label#fileLabel {
   cursor: pointer;
   padding: 0.5rem;
   border: none;
-  border-bottom: 1px solid var(--accent-color);
+  background: #181825;
   color: var(--accent-color);
 }
 

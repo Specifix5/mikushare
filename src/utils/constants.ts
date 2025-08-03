@@ -6,3 +6,5 @@ export const UPLOADS_DIR =
   path.resolve(import.meta.dirname, '../uploads');
 
 export const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
+export const WEB_NAME =
+  BASE_URL.replace(/^https?:\/\/([^\/]+).*/, '$1') ?? 'miku share';

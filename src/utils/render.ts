@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises';
 import ejs from 'ejs';
 import path from 'path';
+import { WEB_NAME } from './constants';
 
 const pageDir = path.resolve('./dist/pages');
 const pageCache: Record<string, string> = {};
@@ -17,6 +18,7 @@ export async function render(view: string, data: object = {}): Promise<string> {
     template,
     {
       css: `${RANDOM_BUILD_NUMBER}`,
+      webname: WEB_NAME,
       ...data,
     },
     {

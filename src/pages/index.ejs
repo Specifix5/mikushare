@@ -7,18 +7,20 @@
   <body>
     <div class="container">
       <div class="center-container">
-        <h1>welcome to <span class="blue">miku.hatsune.lol</span></h1>
-        <p align="left">
-          This is essentially a file sharing service, for me and a couple
-          friends.
-        </p>
-        <p align="left">
-          Right now, it's
-          <span class="blue">an invite-only</span> service, if you want to use
-          it, contact me at
-          <a href="https://specifix.dev/" target="_blank">my website</a>
-          and give a good reason. <br><br> I'll probably consider it! ⸜(｡˃ ᵕ ˂ )⸝♡
-        </p>
+        <h1>welcome to <span class="blue"><%= webname %></span></h1>
+        <div class="paragraph-container">
+          <p align="left">
+            This is essentially a file sharing service, for me and a couple
+            friends.
+          </p>
+          <p align="left">
+            Right now, it's
+            <span class="blue">an invite-only</span> service, if you want to use
+            it, contact me at
+            <a href="https://specifix.dev/" target="_blank">my website</a>
+            and give a good reason. <br><br> I'll probably consider it! <span class="nobreak">⸜(｡˃ ᵕ ˂ )⸝♡</span>
+          </p>
+        </div>
 
         <form id="uploadForm" enctype="multipart/form-data">
           <!-- Access key -->
@@ -34,7 +36,12 @@
           <button id="uploadButton" type="submit" disabled>Upload</button>
         </form>
 
-        <img src="public/miku_ascii.png">
+        <div class="flex-list">
+          <div class="oomf">
+            <img src="public/miku_approved.gif" width="88" height="31" loading="lazy" alt="MIKU APPROVED WEBSITE!!!!">
+          </div>
+          <img class="big" src="public/miku_ascii.png">
+        </div>
       </div>
     </div>
   </body>
