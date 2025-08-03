@@ -11,7 +11,7 @@ bun install
 Take a look at `.env.example` in the root folder of the project.
 Those are all the available environment variables you can use
 
-This project can run as is or you can (and should) let nginx
+This project can run as is or you can (and should) let nginx (or any other proxy servers)
 serve the files for you.
 
 ## Before you run the project
