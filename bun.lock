@@ -13,7 +13,6 @@
       },
       "devDependencies": {
         "@preact/preset-vite": "^2.10.2",
-        "@types/better-sqlite3": "^7.6.13",
         "@types/bun": "latest",
         "drizzle-kit": "^0.31.4",
         "prettier": "^3.6.2",
