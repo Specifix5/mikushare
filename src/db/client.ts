@@ -55,8 +55,12 @@ export type MikuFile = {
 };
 
 /**
- * Run queries inside a transaction.
- * Rolls back automatically on error.
+ * Executes a given function within a database transaction.
+ * Automatically rolls back the transaction if an error occurs.
+ *
+ * @param fn - The function that contains database operations to be executed within the transaction.
+ * @returns The result of the function execution.
+ * @template T The type of the result returned by the function.
  */
 export async function withTransaction<T>(
   fn: (
@@ -68,6 +72,7 @@ export async function withTransaction<T>(
     >,
   ) => Promise<T>,
 ): Promise<T> {
+  // Begin a new transaction
   return db.transaction(async (tx) => {
     return await fn(tx);
   });
@@ -91,10 +96,8 @@ export const createUser = async (
   key?: string,
   expiryDate?: Date,
 ): Promise<MikuUser> => {
-  // Generate a random API key if not provided
   const apiKey = key ?? `${user}_${randomBytes(16).toString('hex')}`;
 
-  // Insert the user into the database
   const [insertedUser] = await tx
     .insert(users)
     .values({
@@ -104,12 +107,10 @@ export const createUser = async (
     })
     .returning();
 
-  // If the user was not inserted, throw an error
   if (!insertedUser) {
     throw new FailedToInsertUserError();
   }
 
-  // Return the inserted user
   return {
     id: insertedUser.id,
     user,
@@ -189,6 +190,10 @@ export const userExists = async (
 
 /**
  * Check if key exists and is not expired
+ *
+ * @param tx - The transaction
+ * @param key - The API key to check
+ * @returns Whether the key exists and is not expired
  */
 export const keyExists = async (tx: DBLike, key: string): Promise<boolean> => {
   const result = await tx
@@ -210,7 +215,16 @@ export const keyExists = async (tx: DBLike, key: string): Promise<boolean> => {
 };
 
 /**
- * Insert a new file entry
+ * Insert the file into the database
+ *
+ * @param {DBLike} tx - The transaction
+ * @param {number} ownerId - The owner of the file
+ * @param {string} key - The API key for the file
+ * @param {string} filename - The filename for the file
+ * @param {number} size - The size of the file in bytes
+ * @param {Date} [expiryDate] - The date when the file should expire
+ *
+ * @returns {Promise<{ key: string; filename: string }>} The inserted key and filename
  */
 export const addFileWithKey = async (
   tx: DBLike,
@@ -239,7 +253,15 @@ export const addFileWithKey = async (
 };
 
 /**
- * Insert a new file entry
+ * Inserts a new file entry into the database.
+ *
+ * @param {DBLike} tx - The transaction object used for the database operation.
+ * @param {number} ownerId - The ID of the user who owns the file.
+ * @param {string} extname - The file extension (e.g., .png, .jpg).
+ * @param {number} size - The size of the file in bytes.
+ * @param {Date} [expiryDate] - Optional expiration date for the file.
+ *
+ * @returns {Promise<{ key: string; filename: string }>} A promise that resolves to the key and filename of the newly inserted file.
  */
 export const addFile = async (
   tx: DBLike,
@@ -257,7 +279,12 @@ export const addFile = async (
 };
 
 /**
- * Get file metadata
+ * Retrieves a file's metadata from the database.
+ *
+ * @param {DBLike} tx - The transaction object used for the database operation.
+ * @param {string} key - The API key associated with the file.
+ *
+ * @returns {Promise<MikuFile | null>} A promise that resolves to the file metadata or null if the file does not exist.
  */
 export const getFile = async (
   tx: DBLike,
@@ -269,6 +296,8 @@ export const getFile = async (
     .where(eq(files.key, key))
     .limit(1);
 
+  // If the query returned a result, return the file metadata.
+  // Otherwise, return null to indicate that the file does not exist.
   return result.length > 0 ? result[0]! : null;
 };
 
