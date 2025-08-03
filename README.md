@@ -14,6 +14,10 @@ Those are all the available environment variables you can use
 This project can run as is or you can (and should) let nginx (or any other proxy servers)
 serve the files for you.
 
+If you're pointing the `UPLOADS_DIRECTORY` to something like `/var/www/`
+make sure you have `chmod` the folder accordingly to allow bun to read and write, otherwise it will get
+a permission denied error.
+
 ## Before you run the project
 
 If you haven't already, set up the database by running
