@@ -1,23 +1,22 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import Database from 'bun:sqlite';
+import { Database } from 'bun:sqlite';
 import type RunResult from 'bun:sqlite';
-
-import { randomBytes, randomUUID } from 'crypto';
-
-import * as schema from './schema';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
-import type { ExtractTablesWithRelations } from 'drizzle-orm';
-import { eq } from 'drizzle-orm';
-import { files, users } from './schema';
-import { toISO } from '../utils/keys';
-import { readFile } from 'fs/promises';
+import {
+  type ExtractTablesWithRelations,
+  eq,
+  isNotNull,
+  lt,
+  and,
+} from 'drizzle-orm';
+import { randomBytes, randomUUID } from 'crypto';
+import { readFile, readdir, stat, exists, mkdir } from 'fs/promises';
 import { error, info, warn } from '../cli';
 import { FailedToInsertUserError, KeyCollisionError } from './errors';
-import { readdir } from 'fs/promises';
 import { UPLOADS_DIR } from '../utils/constants';
+import { toISO } from '../utils/helpers';
+import * as schema from './schema';
 import path, { basename, extname } from 'path';
-import { stat, exists } from 'fs/promises';
-import { mkdir } from 'fs/promises';
 
 // init sqlite
 const sqlite = new Database('database.db');
@@ -37,15 +36,15 @@ export type DBLike =
       ExtractTablesWithRelations<typeof schema>
     >;
 
-export type MikuUser = {
+export interface MikuUser {
   id: number;
   user: string;
   apiKey: string;
   expiresAt: string | null;
   createdAt: string;
-};
+}
 
-export type MikuFile = {
+export interface MikuFile {
   id: number;
   key: string;
   ownerId: number;
@@ -53,7 +52,7 @@ export type MikuFile = {
   size: number;
   expiresAt: string | null;
   createdAt: string;
-};
+}
 
 /**
  * Executes a given function within a database transaction.
@@ -75,7 +74,7 @@ export async function withTransaction<T>(
 ): Promise<T> {
   // Begin a new transaction
   return db.transaction(async (tx) => {
-    return await fn(tx);
+    return fn(tx);
   });
 }
 
@@ -100,7 +99,7 @@ export const createUser = async (
   const apiKey = key ?? `${user}_${randomBytes(16).toString('hex')}`;
 
   const [insertedUser] = await tx
-    .insert(users)
+    .insert(schema.users)
     .values({
       user,
       apiKey,
@@ -134,8 +133,8 @@ export const getUserFromKey = async (
 ): Promise<MikuUser | null> => {
   const result = await tx
     .select()
-    .from(users)
-    .where(eq(users.apiKey, key))
+    .from(schema.users)
+    .where(eq(schema.users.apiKey, key))
     .limit(1);
   return result[0] ?? null;
 };
@@ -153,8 +152,8 @@ export const getUser = async (
 ): Promise<MikuUser | null> => {
   const result = await tx
     .select()
-    .from(users)
-    .where(eq(users.user, user))
+    .from(schema.users)
+    .where(eq(schema.users.user, user))
     .limit(1);
   return result[0] ?? null;
 };
@@ -172,8 +171,8 @@ export const userExists = async (
 ): Promise<boolean> => {
   const result = await tx
     .select()
-    .from(users)
-    .where(eq(users.user, user))
+    .from(schema.users)
+    .where(eq(schema.users.user, user))
     .limit(1);
 
   if (result.length === 0) return false;
@@ -182,11 +181,26 @@ export const userExists = async (
 
   // Check if the key is expired
   if (u.expiresAt && new Date(u.expiresAt) < new Date()) {
-    await tx.delete(users).where(eq(users.id, u.id));
     return false;
   }
 
   return true;
+};
+
+/**
+ * Deletes a user from the database.
+ *
+ * @param {DBLike} tx - The transaction object used for the database operation.
+ * @param {string} user - The username of the user to be deleted.
+ *
+ * @returns {Promise<void>} A promise that resolves when the user is deleted.
+ */
+export const deleteUser = async (tx: DBLike, user: string): Promise<void> => {
+  await tx.delete(schema.users).where(eq(schema.users.user, user));
+};
+
+export const deleteUserById = async (tx: DBLike, id: number): Promise<void> => {
+  await tx.delete(schema.users).where(eq(schema.users.id, id));
 };
 
 /**
@@ -199,8 +213,8 @@ export const userExists = async (
 export const keyExists = async (tx: DBLike, key: string): Promise<boolean> => {
   const result = await tx
     .select()
-    .from(users)
-    .where(eq(users.apiKey, key))
+    .from(schema.users)
+    .where(eq(schema.users.apiKey, key))
     .limit(1);
 
   if (result.length === 0) return false;
@@ -208,7 +222,6 @@ export const keyExists = async (tx: DBLike, key: string): Promise<boolean> => {
   const u = result[0]!;
 
   if (u.expiresAt && new Date(u.expiresAt) < new Date()) {
-    await tx.delete(users).where(eq(users.id, u.id));
     return false;
   }
 
@@ -236,15 +249,15 @@ export const addFileWithKey = async (
   expiryDate?: Date,
 ): Promise<{ key: string; filename: string }> => {
   try {
-    await tx.insert(files).values({
+    await tx.insert(schema.files).values({
       key,
       ownerId,
       filename,
       size,
       expiresAt: toISO(expiryDate),
     });
-  } catch (e: any) {
-    if (e.message.includes('UNIQUE')) {
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('UNIQUE')) {
       throw new KeyCollisionError();
     }
     throw e;
@@ -293,13 +306,59 @@ export const getFile = async (
 ): Promise<MikuFile | null> => {
   const result = await tx
     .select()
-    .from(files)
-    .where(eq(files.key, key))
+    .from(schema.files)
+    .where(eq(schema.files.key, key))
     .limit(1);
 
   // If the query returned a result, return the file metadata.
   // Otherwise, return null to indicate that the file does not exist.
   return result.length > 0 ? result[0]! : null;
+};
+
+export const deleteFile = async (tx: DBLike, id: number): Promise<void> => {
+  await tx.delete(schema.files).where(eq(schema.files.id, id));
+};
+
+/**
+ * Retrieves an array of expired files from the database.
+ *
+ * @param {DBLike} tx - The transaction object used for the database operation.
+ *
+ * @returns {Promise<MikuFile[]>} A promise that resolves to an array of file metadata for expired files.
+ */
+export const getExpiredFiles = async (tx: DBLike): Promise<MikuFile[]> => {
+  const now = new Date();
+  const result = await tx
+    .select()
+    .from(schema.files)
+    .where(
+      and(
+        isNotNull(schema.files.expiresAt),
+        lt(schema.files.expiresAt, toISO(now) ?? ''),
+      ),
+    );
+  return result;
+};
+
+/**
+ * Retrieves a list of users that have expired from the database.
+ *
+ * @param {DBLike} tx - The transaction object used for the database operation.
+ *
+ * @returns {Promise<MikuUser[]>} A promise that resolves to an array of user metadata or an empty array if no users have expired.
+ */
+export const getExpiredUsers = async (tx: DBLike): Promise<MikuUser[]> => {
+  const now = new Date();
+  const result = await tx
+    .select()
+    .from(schema.users)
+    .where(
+      and(
+        isNotNull(schema.users.expiresAt),
+        lt(schema.users.expiresAt, toISO(now) ?? ''),
+      ),
+    );
+  return result;
 };
 
 export const init_db = async () => {
@@ -308,7 +367,7 @@ export const init_db = async () => {
     if (await userExists(tx, 'anonymous')) return;
 
     info('KeyMigrator', 'Creating user Anonymous...');
-    let anonymousUser = await createUser(tx, 'anonymous');
+    const anonymousUser = await createUser(tx, 'anonymous');
 
     if (anonymousUser)
       info(
@@ -374,6 +433,7 @@ export const init_db = async () => {
       const fileName = basename(file, ext);
       const size = (await stat(path.join(UPLOADS_DIR, file))).size;
       if (fileName.length === 36) continue; // Skip new files
+      if (fileName === 'temp') continue; // Temp folder
 
       await withTransaction(async (tx) => {
         if (!(await getFile(tx, fileName))) {
@@ -401,4 +461,14 @@ export const init_db = async () => {
     await mkdir(UPLOADS_DIR);
     warn('FileMigrator', `Created uploads directory at ${UPLOADS_DIR}`);
   }
+
+  if (!(await exists(path.join(UPLOADS_DIR, 'temp')))) {
+    await mkdir(path.join(UPLOADS_DIR, 'temp'));
+    warn(
+      'FileMigrator',
+      `Created temp directory at ${path.join(UPLOADS_DIR, 'temp')}`,
+    );
+  }
+
+  info('Database', 'Loaded database module');
 };

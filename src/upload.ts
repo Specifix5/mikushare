@@ -1,11 +1,10 @@
-import { randomBytes } from 'crypto';
 import { writeFile } from 'fs/promises';
 import path, { extname } from 'path';
-import { CheckIfKeyValid } from './utils/keys';
+import { CheckIfKeyValid } from './utils/helpers';
 import { BASE_URL, UPLOADS_DIR } from './utils/constants';
 import { addFile, getUserFromKey, withTransaction } from './db/client';
 import { FileCreateError, UserNotFoundError } from './db/errors';
-import { error } from './cli';
+import { info } from './cli';
 
 export const UploadHandler = async ({ request }: { request: Request }) => {
   const url = new URL(request.url);
@@ -18,31 +17,57 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
   // Get form data
   const formData = await request.formData();
   const file = formData.get('file') as File;
+  const rawTTL = formData.get('ttl');
+  const ttl = Number(rawTTL);
+  if (rawTTL && (isNaN(ttl) || ttl < 1 || ttl > 24 * 7)) {
+    return new Response(
+      'Invalid TTL, must be a number between 1 and ' + 7 * 24,
+      { status: 400 },
+    );
+  }
 
-  if (!file) return new Response('No file uploaded', { status: 400 });
+  if (!file)
+    return new Response(
+      'No file uploaded, pass "file" parameter as form data',
+      { status: 400 },
+    );
 
   if (file.size > 64 * 1024 * 1024) {
-    return new Response('File too large (max 64MB)', { status: 413 });
+    return new Response('File too large (maximum 64 MB)', { status: 413 });
   }
 
   const { key, filename } = await withTransaction(async (tx) => {
     const user = await getUserFromKey(tx, accessKey);
 
     if (!user) {
-      throw new UserNotFoundError(key);
+      throw new UserNotFoundError(accessKey);
     }
 
     const ext = extname(file.name) || '.png';
-    const fileMetadata = await addFile(tx, user.id, ext, file.size);
 
-    if (!fileMetadata) {
-      throw new FileCreateError();
+    let fileMetadata;
+
+    try {
+      fileMetadata = await addFile(
+        tx,
+        user.id,
+        ext,
+        file.size,
+        ttl ? new Date(Date.now() + ttl * 60 * 60 * 1000) : undefined,
+      );
+    } catch (e) {
+      throw new FileCreateError(e instanceof Error ? e : undefined);
     }
 
-    const filePath = path.join(UPLOADS_DIR, `./${fileMetadata.filename}`);
+    const filePath = path.join(
+      UPLOADS_DIR,
+      !!ttl ? './temp' : './',
+      `./${fileMetadata.filename}`,
+    );
 
-    console.log(
-      `Attempting to save ${file.name} as ${fileMetadata.key} to: ${filePath}`,
+    info(
+      `FileUploads${!!ttl ? '/Temp' : ''}`,
+      `${user.user} - Attempting to save ${file.name} as ${fileMetadata.key} to: ${filePath}`,
     );
 
     // Save file
@@ -53,7 +78,10 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
   });
 
   const urlOut = `${BASE_URL}/${key}`;
-  return new Response(JSON.stringify({ url: urlOut, filename: filename }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return new Response(
+    JSON.stringify({ url: urlOut, filename: filename, isTemp: !!ttl }),
+    {
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
 };

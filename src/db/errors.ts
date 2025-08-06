@@ -23,8 +23,8 @@ export class UserNotFoundError extends BaseError {
 }
 
 export class FileCreateError extends BaseError {
-  constructor() {
-    super(`Failed to create file`);
+  constructor(e: Error | string | undefined) {
+    super(String(e ?? 'Failed to create file'));
     this.name = 'FileMakeError';
   }
 }

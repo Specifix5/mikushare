@@ -1,24 +1,26 @@
 import { readFile } from 'fs/promises';
 import ejs from 'ejs';
 import path from 'path';
-import { WEB_NAME } from './constants';
+import { PROJECT_BUILD_DATE, PROJECT_VERSION, WEB_NAME } from './constants';
 
 const pageDir = path.resolve('./dist/pages');
 const pageCache: Record<string, string> = {};
 
-export const RANDOM_BUILD_NUMBER = Math.floor(Math.random() * 1000);
-
 export async function render(view: string, data: object = {}): Promise<string> {
   const filePath = path.join(pageDir, view + '.ejs');
-  if (!pageCache[filePath]) {
-    pageCache[filePath] = await readFile(filePath, 'utf-8');
-  }
+  pageCache[filePath] ??= await readFile(filePath, 'utf-8');
   const template = pageCache[filePath];
   return ejs.render(
     template,
     {
-      css: `${RANDOM_BUILD_NUMBER}`,
+      css: `${Date.now()}`,
       webname: WEB_NAME,
+      project_version: PROJECT_VERSION,
+      build_date: PROJECT_BUILD_DATE
+        ? PROJECT_BUILD_DATE.toISOString()
+            .slice(0, 10)
+            .replace(/(\d{4})-(\d{2})-(\d{2})/, '$1年$2月$3日')
+        : '',
       ...data,
     },
     {

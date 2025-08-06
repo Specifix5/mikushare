@@ -7,7 +7,9 @@
   <body>
     <div class="container">
       <div class="center-container">
-        <h1>welcome to <span class="blue"><%= webname %></span></h1>
+        <h1>
+          welcome to <span class="blue"><%= webname %></span><img src="public/emojis/miku_leek.png" class="emoji">
+        </h1>
         <div class="paragraph-container">
           <p align="left">
             This is essentially a file sharing service, for me and a couple
@@ -15,10 +17,13 @@
           </p>
           <p align="left">
             Right now, it's
-            <span class="blue">an invite-only</span> service, if you want to use
+            <span class="green">an invite-only</span> service, if you want to use
             it, contact me at
             <a href="https://specifix.dev/" target="_blank">my website</a>
-            and give a good reason. <br><br> I'll probably consider it! <span class="nobreak">⸜(｡˃ ᵕ ˂ )⸝♡</span>
+            and give a good reason. <br><br> I'll probably consider it! <span class="nobreak deviate">⸜(｡˃ ᵕ ˂ )⸝♡</span>
+          </p>
+          <p class="footnote" align="right">
+            <%= build_date %> v<%= project_version %>
           </p>
         </div>
 
@@ -27,10 +32,36 @@
           <input type="password" id="key" name="key" placeholder="Enter access key (the one i gave you)" required />
 
           <!-- File picker -->
-          <label id="fileLabel" for="file">📂 Browse File... (Max 64MB)</label>
+          <label id="fileLabel" for="file">
+            <svg class="emoji" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20z"/></svg>
+
+            <span id="fileName">
+              Browse File... (Max 64MB)
+            </span>
+          </label>
           <input type="file" id="file" name="file" required hidden />
 
-          <span class="underline" id="file-name">No file selected</span>
+          <!-- Temporary option -->
+          <div class="optionContainer">
+            <label id="temporaryLabel">
+              <input type="checkbox" id="temporaryCheck" />
+              Temporary File
+            </label>
+
+            <select id="durationSelect" name="duration" disabled>
+              <option value="" disabled selected>Select duration</option>
+              <option value="1h">1 hour</option>
+              <option value="2h">2 hours</option>
+              <option value="24h">24 hours</option>
+              <option value="48h">48 hours</option>
+              <option value="7d">7 days</option>
+            </select>
+          </div>
+
+          <div class="text-result" id="copyBtn">
+            <span class="underline hide" id="output"></span>
+            <svg class="emoji hide" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M7 3v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V3h1a2 2 0 0 1 2 2v11a6 6 0 0 1-6 6H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm5 11H9a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2m3-4H9a1 1 0 0 0-.117 1.993L9 12h6a1 1 0 1 0 0-2m-1-8a1 1 0 0 1 .117 1.993L14 4h-4a1 1 0 0 1-.117-1.993L10 2z"/></g></svg>
+          </div>
 
           <!-- Submit -->
           <button id="uploadButton" type="submit" disabled>Upload</button>

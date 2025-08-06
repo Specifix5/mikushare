@@ -2,9 +2,15 @@
 
 :root {
   --background-color: #11111b;
+  --background-accent-color: #181825;
   --text-color: #cdd6f4;
 
+  --surface: #313244;
   --accent-color: #7ad4e4;
+  --deviate-accent-color: #b4befe;
+  --error-color: #f38ba8;
+
+  --leek-green: #a6e3a1;
 }
 
 body {
@@ -13,14 +19,6 @@ body {
   font-family: 'JetBrains Mono', monospace;
   margin: 0;
   padding: 0;
-}
-
-.blue {
-  color: var(--accent-color);
-}
-
-.underline {
-  text-decoration: underline;
 }
 
 h1 {
@@ -50,12 +48,16 @@ div.center-container {
 }
 
 div.paragraph-container {
-  padding: 0em;
+  padding: 1em;
   padding-top: 0.25em;
-  padding-left: 1em;
-  padding-right: 1em;
+  padding-bottom: 0em;
   margin-bottom: 1em;
   border: 1px solid var(--accent-color);
+}
+
+p.footnote {
+  margin-bottom: 0.5em;
+  opacity: 0.5;
 }
 
 div.paragraph-container p {
@@ -97,10 +99,10 @@ input[type='text'],
 input[type='password'],
 input[type='file'] {
   padding: 0.5rem;
-  background: #181825;
+  background: var(--background-accent-color);
   color: var(--text-color);
   border: none;
-  font-family: 'JetBrains Mono';
+  font-family: inherit;
 }
 
 input[type='file'] {
@@ -111,8 +113,78 @@ label#fileLabel {
   cursor: pointer;
   padding: 0.5rem;
   border: none;
-  background: #181825;
+  background: var(--background-accent-color);
   color: var(--accent-color);
+}
+
+div.optionContainer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  margin-top: -0.5rem;
+  border: none;
+  background: #181825;
+}
+
+input[type='checkbox'] {
+  accent-color: var(--accent-color); /* modern browsers */
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Chrome/Edge/Opera autofill */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--background-accent-color) inset !important;
+  -webkit-text-fill-color: var(--text-color) !important;
+  caret-color: var(--text-color) !important;
+}
+
+/* Firefox autofill */
+input:-moz-autofill {
+  box-shadow: 0 0 0 1000px var(--background-accent-color) inset !important;
+  -moz-text-fill-color: var(--text-color) !important;
+  caret-color: var(--text-color) !important;
+}
+
+/* Dropdown */
+select {
+  background-color: var(--surface);
+  color: var(--text-color);
+  border: 1px solid var(--background-accent-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  outline: none;
+
+  font-family: inherit;
+}
+
+#copyBtn,
+#output {
+  transition: opacity 0.5s ease-in-out;
+}
+
+#copyBtn:hover {
+  opacity: 0.5;
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+.hide {
+  opacity: 0;
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  user-select: none;
 }
 
 button {
@@ -135,6 +207,39 @@ button:disabled {
   cursor: not-allowed;
 }
 
+img.emoji,
+svg.emoji {
+  height: 1.65em;
+  width: 1.65em;
+  margin-left: 0.2em;
+  vertical-align: -0.45em;
+}
+
+div.text-result {
+  gap: 0em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -0.25em;
+  padding: 0px;
+}
+
 .error {
-  color: #f38ba8;
+  color: var(--error-color);
+}
+
+.deviate {
+  color: var(--deviate-accent-color);
+}
+
+.blue {
+  color: var(--accent-color);
+}
+
+.green {
+  color: var(--leek-green);
+}
+
+.underline {
+  text-decoration: underline;
 }
