@@ -27,17 +27,18 @@ export const init_cli = () => {
           {
             const user = args[0];
             const ttl = args[1];
+            const key = args[2];
 
             if (!user) {
               error('KeyGen', 'Please provide a username');
               return;
             }
 
-            const { apiKey } = await withTransaction(async (tx) => {
+            const { apiKey, expiresAt } = await withTransaction(async (tx) => {
               return createUser(
                 tx,
                 user,
-                undefined,
+                key,
                 ttl
                   ? new Date(Date.now() + parseTime(ttl) * 60 * 60 * 1000)
                   : undefined,
@@ -45,6 +46,7 @@ export const init_cli = () => {
             });
 
             info('KeyGen', 'Generated key:', apiKey);
+            info('KeyGen', 'It will expire on ', expiresAt);
           }
           break;
 

@@ -16,6 +16,10 @@ export const PROJECT_BUILD_DATE = pkg.buildDate
   : undefined;
 
 export const SHOULD_REDIRECT = process.env.SHOULD_REDIRECT === 'true';
+
+export const MAX_FILE_SIZE = 65; // in MB
+export const MAX_TEMP_FILE_SIZE = 95; // in MB
+
 export const CLEANUP_PERIOD = 0.5; // in hours
 
 export const UNITS_TIME: Record<string, number> = {

@@ -1,7 +1,12 @@
 import { writeFile } from 'fs/promises';
 import path, { extname } from 'path';
 import { CheckIfKeyValid } from './utils/helpers';
-import { BASE_URL, UPLOADS_DIR } from './utils/constants';
+import {
+  BASE_URL,
+  MAX_FILE_SIZE,
+  MAX_TEMP_FILE_SIZE,
+  UPLOADS_DIR,
+} from './utils/constants';
 import { addFile, getUserFromKey, withTransaction } from './db/client';
 import { FileCreateError, UserNotFoundError } from './db/errors';
 import { info } from './cli';
@@ -32,8 +37,18 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
       { status: 400 },
     );
 
-  if (file.size > 64 * 1024 * 1024) {
-    return new Response('File too large (maximum 64 MB)', { status: 413 });
+  if (!ttl && file.size > MAX_FILE_SIZE * 1024 * 1024) {
+    return new Response(
+      `File too large (Max ${MAX_FILE_SIZE} MB, up to ${MAX_TEMP_FILE_SIZE} for temp uploads)`,
+      { status: 413 },
+    );
+  }
+
+  if (ttl && file.size > MAX_TEMP_FILE_SIZE * 1024 * 1024) {
+    return new Response(
+      `File too large (Max ${MAX_FILE_SIZE} MB, up to ${MAX_TEMP_FILE_SIZE} for temp uploads)`,
+      { status: 413 },
+    );
   }
 
   const { key, filename } = await withTransaction(async (tx) => {

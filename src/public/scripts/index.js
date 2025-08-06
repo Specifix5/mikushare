@@ -6,6 +6,8 @@ const parseTime = (str) => {
     .reduce((a, b) => a + b, 0);
 };
 
+const defaultFileLabelMessage = 'Browse... (Max 65MB, Temp 95MB)';
+
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('uploadForm');
   const fileInput = document.getElementById('file');
@@ -41,14 +43,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
-      if (fileInput.files[0].size > 64 * 1024 * 1024) {
-        alert('File too large! Max 64 MB allowed.');
+      let sizeLimit = false;
+      if (!tempCheck.checked && fileInput.files[0].size > 65 * 1024 * 1024) {
+        sizeLimit = true;
+      }
+
+      if (tempCheck.checked && fileInput.files[0].size > 95 * 1024 * 1024) {
+        sizeLimit = true;
+      }
+
+      if (sizeLimit) {
+        alert(
+          'File too large! Max 65 MB allowed, and up to 95 MB for temporary uploads',
+        );
         uploadBtn.disabled = true;
         fileName.textContent = '❌ File too large!';
         fileName.classList.add('error');
         fileInput.value = '';
         setTimeout(() => {
-          fileName.textContent = 'Browse File... (Max 64MB)';
+          fileName.textContent = defaultFileLabelMessage;
           fileName.classList.remove('error');
         }, 2500);
       } else {
@@ -57,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileName.classList.remove('error');
       }
     } else {
-      fileName.textContent = 'Browse File... (Max 64MB)';
+      fileName.textContent = defaultFileLabelMessage;
       uploadBtn.disabled = true;
       fileName.classList.remove('error');
     }
@@ -81,6 +94,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!key || fileInput.files.length === 0) {
       alert('Please provide an access key and choose a file.');
+      return;
+    }
+
+    if (tempCheck.checked && durationSelect.selectedIndex === 0) {
+      alert('Please select a duration for the temporary file.');
       return;
     }
 
@@ -122,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         fileInput.value = '';
-        fileName.textContent = 'Browse File... (Max 64MB)';
+        fileName.textContent = defaultFileLabelMessage;
       } else {
         throw new Error('No URL in response');
       }
