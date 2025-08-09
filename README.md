@@ -11,17 +11,17 @@ bun install
 Take a look at `.env.example` in the root folder of the project.
 Those are all the available environment variables you can use
 
-This project can run as is or you can (and should) let nginx (or any other proxy servers)
+This project can run as is or you can (and should) [let nginx (or any other proxy servers)](#using-a-web-server-like-nginx)
 serve the files for you.
 
-If you're pointing the `UPLOADS_DIRECTORY` to something like `/var/www/`
+If you're pointing the `UPLOADS_DIRECTORY` to something like `/var/mikushare`
 make sure you have `chmod` the folder accordingly to allow bun to read and write, otherwise it will get
 a permission denied error.
 
-### IMPORTANT Note
-
-- If you don't use any web servers that serves on a seperate path (e.g /uploads/), **proper OpenGraph embedding is not supported as bun will serve the file directly from shortlinks**
-- It is recommended that if you are setting this up with a web server like nginx, you should add seperate location blocks for `/uploads/` and `/uploads/temp/`, so you can control the cache control headers seperately (e.g temp files get 1 hour TTL, etc.)
+> [!IMPORTANT]
+>
+> - If you don't use any web servers that serves on a seperate path (e.g /uploads/), **proper OpenGraph embedding is not supported as bun will serve the file directly from shortlinks**
+> - It is recommended that if you are setting this up [with a web server like nginx](#using-a-web-server-like-nginx), you should add seperate location blocks for `/uploads/` and `/uploads/temp/`, so you can control the cache control headers seperately (e.g temp files get 1 hour TTL, etc.)
 
 ## Before you run the project
 
@@ -53,3 +53,40 @@ bun run dev
 ```
 
 to combine the two commands into one for fast dev debugging.
+
+### Migrating from SQLite
+
+If you've previously used sqlite before, you can run the migration script
+
+```sh
+# Run after docker compose and drizzle-kit migrate
+bun run ./build-tools/migrate-sqlite-to-pg.ts
+```
+
+## Using a web server (like nginx)
+
+If you ever decide to use a web server to serve your files, here is a config example for nginx, \
+Make sure the folders below have already been created:
+
+```nginx
+# Inside your server block
+
+# Temp files (1 hour cache)
+location /uploads/temp/ {
+    alias /var/mikushare/uploads/temp/;
+    autoindex off;
+    add_header Cache-Control "public, max-age=3600, immutable";
+}
+
+# Permanent files (1 year cache)
+location /uploads/ {
+    alias /var/mikushare/uploads/;
+    autoindex off;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+```
+
+## meow
+
+read if cute \
+mreow ^^
