@@ -23,4 +23,4 @@ info('Main', 'Server is running on http://localhost:' + PORT);
 
 init_cli();
 await init_db();
-init_cleanup();
+if (process.env.INIT_CLEANUP !== 'false') init_cleanup();

@@ -27,12 +27,16 @@ a permission denied error.
 
 If you haven't already, set up the database by running
 
-```
+```sh
+# Deploy Postgres from docker
+docker compose up -d
+
+# Prepare Postgres
 bunx drizzle-kit generate
-bunx drizzle-kit push
+bunx drizzle-kit migrate
 ```
 
-This will create an sqlite database with the schema
+This will prepare PostgreSQL with the schema
 So mikushare can run, otherwise you'll get an error.
 
 Build the project with

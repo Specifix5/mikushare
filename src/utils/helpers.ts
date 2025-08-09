@@ -1,8 +1,6 @@
 import { keyExists, withTransaction } from '../db/client';
 import { CLEANUP_PERIOD, UNITS_TIME } from './constants';
 
-export const toISO = (date?: Date | null) => (date ? date.toISOString() : null);
-
 export const scheduleHourly = (task: () => unknown, delay = 0) => {
   const now = new Date();
   const delayTime = Math.max(
