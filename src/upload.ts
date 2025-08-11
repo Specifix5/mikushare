@@ -37,6 +37,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
       { status: 400 },
     );
 
+  // Non-Temp Files Limit
   if (!ttl && file.size > MAX_FILE_SIZE * 1024 * 1024) {
     return new Response(
       `File too large (Max ${MAX_FILE_SIZE} MB, up to ${MAX_TEMP_FILE_SIZE} for temp uploads)`,
@@ -44,6 +45,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
     );
   }
 
+  // Temp Files Limit
   if (ttl && file.size > MAX_TEMP_FILE_SIZE * 1024 * 1024) {
     return new Response(
       `File too large (Max ${MAX_FILE_SIZE} MB, up to ${MAX_TEMP_FILE_SIZE} for temp uploads)`,
