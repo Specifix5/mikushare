@@ -85,6 +85,8 @@ location /uploads/ {
 }
 ```
 
+After you've setup your nginx configuration, you can make bun let nginx handle file serving by enabling `SHOULD_REDIRECT=true`
+
 ## meow
 
 read if cute \
