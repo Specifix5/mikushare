@@ -106,7 +106,7 @@ export const init_cli = () => {
             const user = args[0];
 
             if (!user) {
-              error('KeyGen', 'Please provide a username');
+              error('Cleaner', 'Please provide a username');
               return;
             }
 
@@ -114,13 +114,13 @@ export const init_cli = () => {
               try {
                 const userResult = await getUser(tx, user);
                 if (!userResult) {
-                  error('KeyGen', 'User not found for user ', user);
+                  error('Cleaner', 'User not found for user ', user);
                   return;
                 }
                 const files = await getFilesByOwner(tx, userResult.id);
 
                 if (files.length === 0) {
-                  info('KeyGen', `No files found for user ${user}`);
+                  info('Cleaner', `No files found for user ${user}`);
                   return;
                 }
                 let deletedCount = 0;
@@ -135,7 +135,7 @@ export const init_cli = () => {
                     );
                   } catch (e) {
                     error(
-                      'KeyGen',
+                      'Cleaner',
                       `Failed to unlink file ${file.filename} (Maybe it doesn't exist?): `,
                       e,
                     );
@@ -144,17 +144,21 @@ export const init_cli = () => {
                   await deleteFile(tx, file.id);
                   deletedCount++;
                   info(
-                    'KeyGen',
+                    'Cleaner',
                     `Deleted file ${file.filename} (${file.size} bytes) for user ${user}`,
                   );
                 }
 
                 warn(
-                  'KeyGen',
+                  'Cleaner',
                   `Successfully deleted ${deletedCount} files for user ${user}`,
                 );
               } catch (e) {
-                error('KeyGen', `Failed to delete files for user ${user}: `, e);
+                error(
+                  'Cleaner',
+                  `Failed to delete files for user ${user}: `,
+                  e,
+                );
                 throw e;
               }
             });

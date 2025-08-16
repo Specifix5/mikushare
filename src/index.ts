@@ -9,6 +9,7 @@ import { info, init_cli } from './cli';
 import { GetFileHandler, GetFileUploads } from './getFile';
 import { init_cleanup } from './utils/cleanup';
 import { handleAuth } from './utils/helpers';
+import { qrCodeHandler } from './qrcode';
 
 const app = new Elysia({
   serve: {
@@ -37,6 +38,7 @@ const app = new Elysia({
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   })
   .get('/:id', GetFileHandler)
+  .get('/qrcode', qrCodeHandler)
   .get('/favicon.ico', () => {
     return new Response(null, {
       headers: {

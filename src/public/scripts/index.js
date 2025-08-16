@@ -11,6 +11,8 @@ const parseTime = (str) => {
     .reduce((a, b) => a + b, 0);
 };
 
+const getVar = (el, name) => getComputedStyle(el).getPropertyValue(name).trim();
+
 const defaultFileLabelMessage = `Browse... (Max ${maxSize}MB, Temp ${maxTempSize}MB)`;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyBtn = document.getElementById('copyBtn');
 
   const copyBtnSvgs = document.querySelectorAll('#copyBtn svg');
+  const qrCodeHolder = document.querySelector('#qrcodeHolder');
 
   // Set initial state
   fileName.textContent = defaultFileLabelMessage;
@@ -34,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
   durationSelect.disabled = true;
   tempCheck.checked = false;
   tempCheckLabel.classList.add('disabled');
+  qrCodeHolder.classList.add('hide');
+  qrCodeHolder.innerHTML = '';
 
   const uploadFile = (key, formData) => {
     uploadBtn.disabled = true;
@@ -55,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
       outputLabel.innerHTML = '';
       copyBtnSvgs.forEach((svg) => svg.classList.add('hide'));
       outputLabel.classList.add('hide');
+      qrCodeHolder.innerHTML = '';
+      qrCodeHolder.classList.add('hide');
       uploadBtn.disabled = true;
     }
 
@@ -99,7 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (
       copyBtn.disabled ||
       copyBtn.classList.contains('hide') ||
-      outputLabel.classList.contains('hide')
+      outputLabel.classList.contains('hide') ||
+      !outputLabel.classList.contains('underline')
     )
       return;
     try {
@@ -117,6 +125,22 @@ document.addEventListener('DOMContentLoaded', () => {
       sel.addRange(range);
       alert('Press Ctrl + C to copy manually.');
     }
+
+    // Show QR code
+    fetch(`/qrcode?text=${encodeURIComponent(outputLabel.textContent)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error('failed ' + r.status);
+        return r.text();
+      })
+      .then((svg) => {
+        qrCodeHolder.innerHTML = `<img src="data:image/svg+xml;utf8,${encodeURIComponent(svg.replaceAll('<style>.d{fill:currentColor;fill-opacity:.7}</style>', `<style>.d{fill:${getVar(qrCodeHolder, '--text-color')};fill-opacity:.7}</style>`).replace(/<rect\b[^>]*\bfill=["']?#FFFFFF["']?[^>]*\/?>\s*(?:<\/rect>)?/i, ''))}" />`;
+        qrCodeHolder.classList.remove('hide');
+        qrCodeHolder.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      })
+      .catch(console.error);
   });
 
   fileInput.addEventListener('change', () => {
