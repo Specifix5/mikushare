@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { init_db } from './db/client';
-import { PORT, SHOULD_REDIRECT } from './utils/constants';
+import { MAX_TEMP_FILE_SIZE, PORT, SHOULD_REDIRECT } from './utils/constants';
 import { Elysia } from 'elysia';
 import { render } from './utils/render';
 import staticPlugin from '@elysiajs/static';
@@ -10,9 +10,12 @@ import { GetFileHandler, GetFileUploads } from './getFile';
 import { init_cleanup } from './utils/cleanup';
 import { handleAuth } from './utils/helpers';
 
-const app = new Elysia()
+const app = new Elysia({
+  serve: {
+    maxRequestBodySize: 1024 * 1024 * (MAX_TEMP_FILE_SIZE + 5),
+  },
+})
   .use(staticPlugin({ assets: 'dist/public' }))
-
   .post('/upload', UploadHandler, {
     beforeHandle({ request }: { request: Request }) {
       return handleAuth(request);
