@@ -6,7 +6,7 @@ import { file } from 'bun';
 import { info } from './cli';
 import { isCrawler } from './utils/helpers';
 
-const getCacheControl = (temp?: boolean): string => {
+export const getCacheControl = (temp?: boolean): string => {
   return temp ? 'public, max-age=3600' : 'public, max-age=31536000, immutable'; // let cf serve up to a year
 };
 
