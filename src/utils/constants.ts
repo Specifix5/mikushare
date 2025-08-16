@@ -7,6 +7,7 @@ export const UPLOADS_DIR =
   path.resolve(import.meta.dirname, '../uploads');
 
 export const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
+export const FILES_URL = process.env.FILES_URL ?? BASE_URL;
 export const WEB_NAME =
   BASE_URL.replace(/^https?:\/\/([^\/]+).*/, '$1') ?? 'sankyuu';
 
@@ -17,8 +18,8 @@ export const PROJECT_BUILD_DATE = pkg.buildDate
 
 export const SHOULD_REDIRECT = process.env.SHOULD_REDIRECT === 'true';
 
-export const MAX_FILE_SIZE = 65; // in MB
-export const MAX_TEMP_FILE_SIZE = 95; // in MB
+export const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE) ?? 65; // in MB
+export const MAX_TEMP_FILE_SIZE = Number(process.env.MAX_TEMP_FILE_SIZE) ?? 95; // in MB
 
 export const CLEANUP_PERIOD = 0.5; // in hours
 

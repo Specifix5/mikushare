@@ -39,7 +39,11 @@ export type MikuUser = InferSelectModel<typeof schema.users>;
 export type MikuFile = InferSelectModel<typeof schema.files>;
 
 /**
- * Executes a given function within a database transaction.
+ * Represents a function that executes a given function within a database transaction.
+ *
+ * @template T - The type of the result returned by the function.
+ * @param {(tx: DBLike) => Promise<T>} fn - The function to execute within the transaction.
+ * @returns {Promise<T>} - A promise that resolves to the result of the function.
  */
 export async function withTransaction<T>(
   fn: (tx: DBLike) => Promise<T>,
@@ -48,7 +52,14 @@ export async function withTransaction<T>(
 }
 
 /**
- * Insert a new user with API key
+ * Creates a new user in the database.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {string} user - The username of the user.
+ * @param {string} [key] - The API key of the user. If not provided, a random API key is generated.
+ * @param {Date} [expiryDate] - The expiry date of the user's API key. If not provided, the API key never expires.
+ * @returns {Promise<MikuUser>} - A Promise that resolves to the inserted user.
+ * @throws {FailedToInsertUserError} - If the user failed to be inserted into the database.
  */
 export const createUser = async (
   tx: DBLike,
@@ -63,19 +74,22 @@ export const createUser = async (
     .values({
       user,
       apiKey,
-      // Postgres timestamptz: pass Date or null
       expiresAt: expiryDate ?? null,
-      // createdAt uses DEFAULT NOW() in schema
     })
     .returning();
 
+  // Throw an error if the user failed to be inserted
   if (!insertedUser) throw new FailedToInsertUserError();
 
   return insertedUser;
 };
 
 /**
- * Gets the user data by API key
+ * Retrieves a user from the database using their API key.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {string} key - The API key of the user.
+ * @returns {Promise<MikuUser | null>} - A Promise that resolves to the user object if found, or null if not found.
  */
 export const getUserFromKey = async (
   tx: DBLike,
@@ -86,11 +100,16 @@ export const getUserFromKey = async (
     .from(schema.users)
     .where(eq(schema.users.apiKey, key))
     .limit(1);
+
   return result[0] ?? null;
 };
 
 /**
- * Gets the user data by username
+ * Retrieves a user from the database using their username.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {string} user - The username of the user.
+ * @returns {Promise<MikuUser | null>} - A Promise that resolves to the user object if found, or null if not found.
  */
 export const getUser = async (
   tx: DBLike,
@@ -105,7 +124,11 @@ export const getUser = async (
 };
 
 /**
- * Check if a user exists and their key is not expired
+ * Check if a user exists in the database, and if the user's API key is not expired.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {string} user - The username of the user.
+ * @returns {Promise<boolean>} - A Promise that resolves to a boolean indicating if the user exists and is not expired.
  */
 export const userExists = async (
   tx: DBLike,
@@ -126,7 +149,11 @@ export const userExists = async (
 };
 
 /**
- * Deletes a user from the database.
+ * Delete a user from the database.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {string} user - The username of the user to delete.
+ * @returns {Promise<void>} - A Promise that resolves when the user is deleted.
  */
 export const deleteUser = async (tx: DBLike, user: string): Promise<void> => {
   await tx.delete(schema.users).where(eq(schema.users.user, user));
@@ -137,7 +164,11 @@ export const deleteUserById = async (tx: DBLike, id: number): Promise<void> => {
 };
 
 /**
- * Check if key exists and is not expired
+ * Check if a key exists in the database, and if the associated user's API key is not expired.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {string} key - The API key to check.
+ * @returns {Promise<boolean>} - A Promise that resolves to a boolean indicating if the key exists and is not expired.
  */
 export const keyExists = async (tx: DBLike, key: string): Promise<boolean> => {
   const result = await tx
@@ -155,7 +186,16 @@ export const keyExists = async (tx: DBLike, key: string): Promise<boolean> => {
 };
 
 /**
- * Insert the file into the database
+ * Inserts a new file entry into the database with a given key.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {number} ownerId - The ID of the user who owns the file.
+ * @param {string} key - The API key associated with the file.
+ * @param {string} filename - The name of the file.
+ * @param {number} size - The size of the file in bytes.
+ * @param {Date} [expiryDate] - The expiry date of the file. If not provided, the file never expires.
+ * @returns {Promise<{ key: string; filename: string }>} - A Promise that resolves to an object with the key and filename of the inserted file.
+ * @throws {KeyCollisionError} - If the key already exists in the database.
  */
 export const addFileWithKey = async (
   tx: DBLike,
@@ -171,11 +211,9 @@ export const addFileWithKey = async (
       ownerId,
       filename,
       size,
-      expiresAt: expiryDate ?? null, // timestamptz
-      // createdAt defaultNow() in schema
+      expiresAt: expiryDate ?? null,
     });
   } catch (e) {
-    // Postgres unique violation
     if (
       typeof e === 'object' &&
       e &&
@@ -191,7 +229,14 @@ export const addFileWithKey = async (
 };
 
 /**
- * Inserts a new file entry into the database.
+ * Inserts a new file entry into the database with a random key.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {number} ownerId - The ID of the user who owns the file.
+ * @param {string} extname - The file extension of the file.
+ * @param {number} size - The size of the file in bytes.
+ * @param {Date} [expiryDate] - The expiry date of the file. If not provided, the file never expires.
+ * @returns {Promise<{ key: string; filename: string }>} - A Promise that resolves to an object with the key and filename of the inserted file.
  */
 export const addFile = async (
   tx: DBLike,
@@ -209,7 +254,11 @@ export const addFile = async (
 };
 
 /**
- * Retrieves a file's metadata from the database.
+ * Retrieves a file from the database by its key.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {string} key - The key of the file to retrieve.
+ * @returns {Promise<MikuFile | null>} - A Promise that resolves to the file object with the given key, or null if it does not exist.
  */
 export const getFile = async (
   tx: DBLike,
@@ -229,7 +278,10 @@ export const deleteFile = async (tx: DBLike, id: number): Promise<void> => {
 };
 
 /**
- * Retrieves expired files (DB compares against now()).
+ * Retrieves files that have expired from the database.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @returns {Promise<MikuFile[]>} - A Promise that resolves to an array of expired file objects.
  */
 export const getExpiredFiles = async (tx: DBLike): Promise<MikuFile[]> => {
   const result = await tx
@@ -245,7 +297,48 @@ export const getExpiredFiles = async (tx: DBLike): Promise<MikuFile[]> => {
 };
 
 /**
- * Retrieves expired users (DB compares against now()).
+ * Retrieves files from the database that belong to a specific user.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {number} ownerId - The ID of the user whose files to retrieve.
+ * @returns {Promise<MikuFile[]>} - A Promise that resolves to an array of file objects belonging to the user.
+ */
+export const getFilesByOwner = async (
+  tx: DBLike,
+  ownerId: number,
+): Promise<MikuFile[]> => {
+  const result = await tx
+    .select()
+    .from(schema.files)
+    .where(eq(schema.files.ownerId, ownerId));
+
+  return result;
+};
+
+/**
+ * Updates the owner of a file in the database.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @param {number} fileId - The ID of the file to update.
+ * @param {number} newOwnerId - The ID of the new owner.
+ * @return {Promise<void>} A Promise that resolves when the update is complete.
+ */
+export const setFileOwner = async (
+  tx: DBLike,
+  fileId: number,
+  newOwnerId: number,
+): Promise<void> => {
+  await tx
+    .update(schema.files)
+    .set({ ownerId: newOwnerId })
+    .where(eq(schema.files.id, fileId));
+};
+
+/**
+ * Retrieves users from the database that have expired.
+ *
+ * @param {DBLike} tx - The database transaction to use.
+ * @returns {Promise<MikuUser[]>} - A Promise that resolves to an array of expired user objects.
  */
 export const getExpiredUsers = async (tx: DBLike): Promise<MikuUser[]> => {
   const result = await tx

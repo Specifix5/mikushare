@@ -4,6 +4,8 @@ import {
   deleteUserById,
   getExpiredFiles,
   getExpiredUsers,
+  getFilesByOwner,
+  setFileOwner,
   withTransaction,
 } from '../db/client';
 import { unlink } from 'fs/promises';
@@ -33,6 +35,14 @@ export const init_cleanup = () => {
 
     for (const user of expiredUsers) {
       await withTransaction(async (tx) => {
+        const files = await getFilesByOwner(tx, user.id);
+        for (const file of files) {
+          info(
+            'Cleaner',
+            `${user.user} - Migrating ${file.expiresAt ? 'temp ' : ''}file #${file.id} ${file.filename} (${file.key}) to anonymous user`,
+          );
+          await setFileOwner(tx, file.id, 1); // set to anonymous
+        }
         await deleteUserById(tx, user.id);
         warn('Cleaner', `${user.user} - Deleted expired user`);
       });

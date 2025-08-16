@@ -8,11 +8,27 @@ import { UploadHandler } from './upload';
 import { info, init_cli } from './cli';
 import { GetFileHandler, GetFileUploads } from './getFile';
 import { init_cleanup } from './utils/cleanup';
+import { handleAuth } from './utils/helpers';
 
 const app = new Elysia()
   .use(staticPlugin({ assets: 'dist/public' }))
-  //.use(staticPlugin({ assets: 'dist/public/favicon.ico' }))
-  .post('/upload', UploadHandler)
+
+  .post('/upload', UploadHandler, {
+    beforeHandle({ request }: { request: Request }) {
+      return handleAuth(request);
+    },
+  })
+  .options(
+    '/upload',
+    () =>
+      new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST,OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      }),
+  )
   .get('/', async () => {
     const html = await render('index');
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
@@ -33,7 +49,6 @@ if (!SHOULD_REDIRECT) {
     return GetFileUploads({ params, temp: true });
   });
 }
-
 app.listen(PORT);
 
 info('Main', 'Server is running on http://localhost:' + PORT);

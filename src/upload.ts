@@ -1,6 +1,5 @@
 import { writeFile } from 'fs/promises';
 import path, { extname } from 'path';
-import { CheckIfKeyValid } from './utils/helpers';
 import {
   BASE_URL,
   MAX_FILE_SIZE,
@@ -15,9 +14,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
   const url = new URL(request.url);
   const accessKey = url.searchParams.get('key');
 
-  if (!accessKey || !(await CheckIfKeyValid(accessKey))) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  if (!accessKey) return;
 
   // Get form data
   const formData = await request.formData();
