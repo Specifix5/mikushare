@@ -1,6 +1,6 @@
 import { readFile, exists } from 'fs/promises';
 import { getFile, withTransaction } from './db/client';
-import { BASE_URL, UPLOADS_DIR } from './utils/constants';
+import { BASE_URL, FILES_URL, UPLOADS_DIR } from './utils/constants';
 import path from 'path';
 import { file } from 'bun';
 import { info } from './cli';
@@ -33,7 +33,7 @@ export const GetFileHandler = async ({
 
   const cacheControl = getCacheControl(!!fileMetadata.expiresAt);
 
-  const redirectLocation = `/uploads/${fileMetadata.expiresAt ? 'temp/' : ''}${fileMetadata.filename}`;
+  const redirectLocation = `${FILES_URL}/uploads/${fileMetadata.expiresAt ? 'temp/' : ''}${fileMetadata.filename}`;
   if (isCrawler(request.headers.get('user-agent')) && mime.includes('image')) {
     const fileUrl = new URL(redirectLocation, BASE_URL).href;
     return new Response(

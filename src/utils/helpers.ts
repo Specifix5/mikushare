@@ -60,3 +60,17 @@ export const CheckIfKeyValid = async (key: string): Promise<boolean> => {
     return keyExists(tx, key);
   });
 };
+
+export const handleAuth = async (request: Request) => {
+  const url = new URL(request.url);
+  const accessKey = url.searchParams.get('key');
+
+  if (!accessKey || !(await CheckIfKeyValid(accessKey))) {
+    return new Response('Unauthorized', {
+      headers: {
+        Connection: 'close',
+      },
+      status: 401,
+    });
+  }
+};

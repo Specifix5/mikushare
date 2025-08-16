@@ -1,12 +1,17 @@
 const units = { d: 24, h: 1 }; // in hours
 
+const maxSize = isNaN(Number('{%maxSize%}')) ? 65 : Number('{%maxSize%}');
+const maxTempSize = isNaN(Number('{%maxTempSize%}'))
+  ? 95
+  : Number('{%maxTempSize%}');
+
 const parseTime = (str) => {
   return Array.from(str.matchAll(/(\d+)([dh])/g))
     .map(([_, num, unit]) => +num * units[unit])
     .reduce((a, b) => a + b, 0);
 };
 
-const defaultFileLabelMessage = 'Browse... (Max 65MB, Temp 95MB)';
+const defaultFileLabelMessage = `Browse... (Max ${maxSize}MB, Temp ${maxTempSize}MB)`;
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('uploadForm');
@@ -23,7 +28,80 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const copyBtnSvgs = document.querySelectorAll('#copyBtn svg');
 
+  // Set initial state
+  fileName.textContent = defaultFileLabelMessage;
+  uploadBtn.disabled = true;
+  durationSelect.disabled = true;
+  tempCheck.checked = false;
+  tempCheckLabel.classList.add('disabled');
+
+  const uploadFile = (key, formData) => {
+    uploadBtn.disabled = true;
+    outputLabel.classList.remove('hide');
+    outputLabel.classList.remove('underline');
+    outputLabel.innerHTML = `Uploading...<span class="blue"> [0%]</span>`;
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/upload?key=${encodeURIComponent(key)}`);
+    xhr.responseType = 'json';
+
+    function handleUploadError(message) {
+      console.error(message);
+      alert('Upload error: ' + message);
+
+      fileInput.value = '';
+      fileName.textContent = '❌ ' + message;
+      fileName.classList.add('error');
+      outputLabel.innerHTML = '';
+      copyBtnSvgs.forEach((svg) => svg.classList.add('hide'));
+      outputLabel.classList.add('hide');
+      uploadBtn.disabled = true;
+    }
+
+    // progress bar
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const p = Math.round((e.loaded / e.total) * 100);
+        outputLabel.innerHTML = `Uploading...<span class="blue"> [${p}%]</span>`;
+      } else {
+        outputLabel.innerHTML = 'Uploading...';
+      }
+    };
+
+    // success
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = xhr.response ?? JSON.parse(xhr.responseText || '{}');
+        if (data && data.url) {
+          outputLabel.classList.add('underline');
+          outputLabel.textContent = data.url ?? '';
+          copyBtnSvgs.forEach((svg) => svg.classList.remove('hide'));
+
+          fileInput.value = '';
+          fileName.textContent = defaultFileLabelMessage;
+          fileName.classList.remove('error');
+          return;
+        }
+        return handleUploadError('No URL in response');
+      }
+      handleUploadError(`${xhr.status} ${xhr.statusText || 'HTTP error'}`);
+    };
+
+    // errors
+    xhr.onerror = () => handleUploadError('Network error');
+    xhr.onabort = () => handleUploadError('Upload cancelled');
+    xhr.ontimeout = () => handleUploadError('Upload timed out');
+
+    xhr.send(formData);
+  };
+
   copyBtn.addEventListener('click', async () => {
+    if (
+      copyBtn.disabled ||
+      copyBtn.classList.contains('hide') ||
+      outputLabel.classList.contains('hide')
+    )
+      return;
     try {
       if (document.visibilityState !== 'visible')
         throw new Error('Document not visible');
@@ -44,17 +122,23 @@ document.addEventListener('DOMContentLoaded', () => {
   fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
       let sizeLimit = false;
-      if (!tempCheck.checked && fileInput.files[0].size > 65 * 1024 * 1024) {
+      if (
+        !tempCheck.checked &&
+        fileInput.files[0].size > maxSize * 1024 * 1024
+      ) {
         sizeLimit = true;
       }
 
-      if (tempCheck.checked && fileInput.files[0].size > 95 * 1024 * 1024) {
+      if (
+        tempCheck.checked &&
+        fileInput.files[0].size > maxTempSize * 1024 * 1024
+      ) {
         sizeLimit = true;
       }
 
       if (sizeLimit) {
         alert(
-          'File too large! Max 65 MB allowed, and up to 95 MB for temporary uploads',
+          `File too large! Max ${maxSize} MB allowed, and up to ${maxTempSize} MB for temporary uploads`,
         );
         uploadBtn.disabled = true;
         fileName.textContent = '❌ File too large!';
@@ -110,48 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
       formData.append('ttl', parseTime(durationSelect.value));
     }
 
-    try {
-      uploadBtn.disabled = true;
-      outputLabel.classList.remove('hide');
-      outputLabel.textContent = 'Uploading...';
-
-      const res = await fetch(`/upload?key=${encodeURIComponent(key)}`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error(`${res.status} ${res.statusText}`);
-      }
-      const data = await res.json();
-
-      if (data.url) {
-        /*try {
-          // Copy to clipboard
-          await navigator.clipboard.writeText(data.url);
-          alert(`☑️ File uploaded! URL copied to clipboard:\n${data.url}`);
-        } catch (err) {
-          console.error('Failed to copy to clipboard:', err);
-          alert(`❌ Failed to copy to clipboard: ${err.message}`);
-        }*/
-        outputLabel.textContent = data.url ?? '';
-        copyBtnSvgs.forEach((svg) => {
-          svg.classList.remove('hide');
-        });
-
-        fileInput.value = '';
-        fileName.textContent = defaultFileLabelMessage;
-      } else {
-        throw new Error('No URL in response');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Upload error: ' + err.message);
-
-      fileInput.value = '';
-      fileName.textContent = '❌ ' + err.message;
-      fileName.classList.add('error');
-      uploadBtn.disabled = false;
-    }
+    uploadFile(key, formData);
   });
 });

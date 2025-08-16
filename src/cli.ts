@@ -1,5 +1,15 @@
-import { createUser, deleteUser, getUser, withTransaction } from './db/client';
+import { unlink } from 'fs/promises';
+import path from 'path';
+import {
+  createUser,
+  deleteFile,
+  deleteUser,
+  getFilesByOwner,
+  getUser,
+  withTransaction,
+} from './db/client';
 import { users } from './db/schema';
+import { UPLOADS_DIR } from './utils/constants';
 import { parseTime } from './utils/helpers';
 
 export const info = (name: string, ...args: unknown[]) => {
@@ -90,12 +100,78 @@ export const init_cli = () => {
             }
           }
           break;
+
+        case 'delfiles':
+          {
+            const user = args[0];
+
+            if (!user) {
+              error('KeyGen', 'Please provide a username');
+              return;
+            }
+
+            await withTransaction(async (tx) => {
+              try {
+                const userResult = await getUser(tx, user);
+                if (!userResult) {
+                  error('KeyGen', 'User not found for user ', user);
+                  return;
+                }
+                const files = await getFilesByOwner(tx, userResult.id);
+
+                if (files.length === 0) {
+                  info('KeyGen', `No files found for user ${user}`);
+                  return;
+                }
+                let deletedCount = 0;
+                for (const file of files) {
+                  try {
+                    await unlink(
+                      path.join(
+                        UPLOADS_DIR,
+                        file.expiresAt ? './temp/' : './',
+                        file.filename,
+                      ),
+                    );
+                  } catch (e) {
+                    error(
+                      'KeyGen',
+                      `Failed to unlink file ${file.filename} (Maybe it doesn't exist?): `,
+                      e,
+                    );
+                  }
+
+                  await deleteFile(tx, file.id);
+                  deletedCount++;
+                  info(
+                    'KeyGen',
+                    `Deleted file ${file.filename} (${file.size} bytes) for user ${user}`,
+                  );
+                }
+
+                warn(
+                  'KeyGen',
+                  `Successfully deleted ${deletedCount} files for user ${user}`,
+                );
+              } catch (e) {
+                error('KeyGen', `Failed to delete files for user ${user}: `, e);
+                throw e;
+              }
+            });
+          }
+
+          break;
         case 'deluser':
           {
             const user = args[0];
 
             if (!user) {
               error('KeyGen', 'Please provide a username');
+              return;
+            }
+
+            if (user === 'anonymous') {
+              error('KeyGen', 'Cannot delete the anonymous user');
               return;
             }
 
