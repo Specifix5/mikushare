@@ -84,7 +84,8 @@ export const GetFileUploads = async ({
 
     const cacheControl = getCacheControl(temp);
 
-    const filename = url.searchParams.get('fn') ?? path.basename(filepath);
+    const filename =
+      (url.searchParams.get('fn')?.trim() ?? '') || path.basename(filepath);
 
     const headers = {
       'Content-Type': mime,
