@@ -2,7 +2,7 @@
   "name": "sankyuu",
   "module": "index.ts",
   "type": "module",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "private": true,
   "scripts": {
     "build": "bun run build-tools/build.ts",
