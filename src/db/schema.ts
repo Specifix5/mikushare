@@ -18,6 +18,7 @@ export const files = pgTable('files', {
     .notNull(),
   filename: text('filename').notNull(),
   size: integer('size').notNull(),
+  realFilename: text('real_filename').notNull().default(''),
   expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
     .defaultNow()

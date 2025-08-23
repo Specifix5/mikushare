@@ -1,4 +1,3 @@
-import { writeFile } from 'fs/promises';
 import path, { extname } from 'path';
 import {
   BASE_URL,
@@ -65,6 +64,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
       fileMetadata = await addFile(
         tx,
         user.id,
+        file.name,
         ext,
         file.size,
         ttl ? new Date(Date.now() + ttl * 60 * 60 * 1000) : undefined,
@@ -85,8 +85,7 @@ export const UploadHandler = async ({ request }: { request: Request }) => {
     );
 
     // Save file
-    const buf = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buf);
+    await Bun.write(filePath, new Response(file));
 
     return fileMetadata;
   });

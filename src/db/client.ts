@@ -202,6 +202,7 @@ export const addFileWithKey = async (
   ownerId: number,
   key: string,
   filename: string,
+  realFilename: string,
   size: number,
   expiryDate?: Date,
 ): Promise<{ key: string; filename: string }> => {
@@ -211,6 +212,7 @@ export const addFileWithKey = async (
       ownerId,
       filename,
       size,
+      realFilename,
       expiresAt: expiryDate ?? null,
     });
   } catch (e) {
@@ -241,6 +243,7 @@ export const addFileWithKey = async (
 export const addFile = async (
   tx: DBLike,
   ownerId: number,
+  realFilename: string,
   extname: string,
   size: number,
   expiryDate?: Date,
@@ -248,7 +251,15 @@ export const addFile = async (
   const key = randomBytes(6).toString('base64url');
   const filename = randomUUID() + extname;
 
-  await addFileWithKey(tx, ownerId, key, filename, size, expiryDate);
+  await addFileWithKey(
+    tx,
+    ownerId,
+    key,
+    filename,
+    realFilename,
+    size,
+    expiryDate,
+  );
 
   return { key, filename };
 };
@@ -434,6 +445,7 @@ export const init_db = async () => {
             tx,
             anonymousUser.id,
             fileName,
+            `${fileName}${ext}`,
             `${fileName}${ext}`,
             size,
           );

@@ -70,18 +70,18 @@ Make sure the folders below have already been created:
 ```nginx
 # Inside your server block
 
-# Temp files (1 hour cache)
-location /uploads/temp/ {
-    alias /var/mikushare/uploads/temp/;
-    autoindex off;
-    add_header Cache-Control "public, max-age=3600, immutable";
+location /_internal/uploads/ {
+    internal;
+    alias /var/mikushare/uploads/;
+    types { } default_type application/octet-stream;
+    etag on;
 }
 
-# Permanent files (1 year cache)
-location /uploads/ {
-    alias /var/mikushare/uploads/;
-    autoindex off;
-    add_header Cache-Control "public, max-age=31536000, immutable";
+location /_internal/uploads/temp/ {
+    internal;
+    alias /var/mikushare/uploads/temp/;
+    types { } default_type application/octet-stream;
+    etag on;
 }
 ```
 

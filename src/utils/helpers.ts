@@ -55,6 +55,26 @@ export const isCrawler = (ua: string | null | undefined): boolean => {
   );
 };
 
+export const sanitizeFilename = (
+  name: string,
+  maxLength = 150,
+  fallback = 'meow',
+): string => {
+  const s = name
+    .normalize()
+    .replace(/[\\"]/g, '_')
+    .replace(/[\/<>:*?|]/g, '_')
+    .replace(/[\u0000-\u001F\u007F]/g, '_')
+    .trim()
+    .replace(/^\.+/, '_');
+
+  const m = /^(.*?)(\.[^.]*)?$/.exec(s);
+  const base = (m?.[1] ?? '') || fallback;
+  const ext = m?.[2] ?? '';
+  const keep = Math.max(1, maxLength - ext.length);
+  return base.slice(0, keep) + ext || fallback;
+};
+
 export const CheckIfKeyValid = async (key: string): Promise<boolean> => {
   return withTransaction(async (tx) => {
     return keyExists(tx, key);
