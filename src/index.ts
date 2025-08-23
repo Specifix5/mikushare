@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { init_db } from './db/client';
-import { MAX_TEMP_FILE_SIZE, PORT, SHOULD_REDIRECT } from './utils/constants';
+import { MAX_TEMP_FILE_SIZE, PORT } from './utils/constants';
 import { Elysia } from 'elysia';
 import { render } from './utils/render';
 import staticPlugin from '@elysiajs/static';
@@ -11,7 +11,7 @@ import { init_cleanup } from './utils/cleanup';
 import { handleAuth } from './utils/helpers';
 import { qrCodeHandler } from './qrcode';
 
-const app = new Elysia({
+const _ = new Elysia({
   serve: {
     maxRequestBodySize: 1024 * 1024 * (MAX_TEMP_FILE_SIZE + 5),
   },
@@ -39,6 +39,10 @@ const app = new Elysia({
   })
   .get('/:id', GetFileHandler)
   .get('/qrcode', qrCodeHandler)
+  .get('/uploads/:id', GetFileUploads)
+  .get('/uploads/temp/:id', async ({ params, request }) => {
+    return GetFileUploads({ params, temp: true, request });
+  })
   .get('/favicon.ico', () => {
     return new Response(null, {
       headers: {
@@ -46,15 +50,8 @@ const app = new Elysia({
       },
       status: 302,
     });
-  });
-
-if (!SHOULD_REDIRECT) {
-  app.get('/uploads/:id', GetFileUploads);
-  app.get('/uploads/temp/:id', async ({ params }) => {
-    return GetFileUploads({ params, temp: true });
-  });
-}
-app.listen(PORT);
+  })
+  .listen(PORT);
 
 info('Main', 'Server is running on http://localhost:' + PORT);
 
