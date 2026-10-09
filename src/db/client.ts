@@ -197,6 +197,7 @@ export const addFileWithKey = async (
   size: number,
   expiryDate?: Date,
   sha256?: string,
+  pasteTitle?: string,
 ): Promise<{ key: string; filename: string }> => {
   try {
     await tx.insert(schema.files).values({
@@ -206,6 +207,7 @@ export const addFileWithKey = async (
       size,
       realFilename,
       sha256: sha256 ?? null,
+      pasteTitle: pasteTitle ?? null,
       expiresAt: expiryDate ?? null,
     });
   } catch (e) {
@@ -241,6 +243,7 @@ export const addFile = async (
   size: number,
   expiryDate?: Date,
   sha256?: string,
+  pasteTitle?: string,
 ): Promise<{ key: string; filename: string }> => {
   const key = randomBytes(6).toString('base64url');
   const filename = randomUUID() + extname;
@@ -254,6 +257,7 @@ export const addFile = async (
     size,
     expiryDate,
     sha256,
+    pasteTitle,
   );
 
   return { key, filename };

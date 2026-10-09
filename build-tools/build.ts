@@ -4,6 +4,7 @@ import {
   MAX_BATCH_FILE_SIZE,
   MAX_FILE_SIZE,
   MAX_TEMP_FILE_SIZE,
+  MAX_TEXT_SIZE,
   MAX_UPLOAD_FILES,
 } from '../src/utils/constants';
 import ejs from 'ejs';
@@ -21,6 +22,7 @@ const pageDir = path.resolve('./src/pages');
 const replacements: Record<string, string> = {
   '{%maxSize%}': String(MAX_FILE_SIZE),
   '{%maxTempSize%}': String(MAX_TEMP_FILE_SIZE),
+  '{%maxTextSize%}': String(MAX_TEXT_SIZE),
   '{%maxBatchSize%}': String(MAX_BATCH_FILE_SIZE),
   '{%maxFiles%}': String(MAX_UPLOAD_FILES),
 };
@@ -37,6 +39,7 @@ export async function render(view: string, data: object = {}): Promise<string> {
       project_version: PROJECT_VERSION,
       max_size: MAX_FILE_SIZE,
       max_temp_size: MAX_TEMP_FILE_SIZE,
+      max_text_size: MAX_TEXT_SIZE,
       max_batch_size: MAX_BATCH_FILE_SIZE,
       max_files: MAX_UPLOAD_FILES,
       script: 'index',
@@ -96,7 +99,9 @@ async function build() {
               ? 'index'
               : file.startsWith('admin')
                 ? 'admin'
-                : 'collection',
+                : file === 'text.ejs'
+                  ? 'text'
+                  : 'collection',
         }),
       );
     }

@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const element = document.createElement('button');
     element.type = 'button';
     element.className = 'link-button';
-    element.textContent = `[ ${label} ]`;
+    element.textContent = `[ ${label.toLowerCase()} ]`;
     element.addEventListener('click', async () => {
       element.disabled = true;
       try {
@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
           : 'These are the files selected for permanent deletion.';
       const confirmButton = document.getElementById('confirmCleanup');
       confirmButton.disabled = result.count === 0;
-      confirmButton.textContent = `[ Delete ${result.count} files permanently ]`;
+      confirmButton.textContent = `[ delete ${result.count} files permanently ]`;
       document.getElementById('cleanupPreview').hidden = false;
     } catch (err) {
       showStatus(err.message, true);

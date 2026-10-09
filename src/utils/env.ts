@@ -26,6 +26,7 @@ export const envSchema = z.object({
   MAX_FILE_SIZE: positive.default(65),
   MAX_TEMP_FILE_SIZE: positive.default(95),
   MAX_BATCH_FILE_SIZE: positive.optional(),
+  MAX_TEXT_SIZE: positive.default(1),
   SHOULD_REDIRECT: boolean.default(false),
   INIT_CLEANUP: boolean.default(true),
   ADMIN_USERS: list,

@@ -34,6 +34,7 @@ process.env.ADMIN_TOKENS = `${dedicatedToken},${otherAdminToken}`;
 process.env.MAX_FILE_SIZE = '0.001';
 process.env.MAX_TEMP_FILE_SIZE = '0.002';
 process.env.MAX_BATCH_FILE_SIZE = '0.003';
+process.env.MAX_TEXT_SIZE = '0.0001';
 process.env.SHOULD_REDIRECT = 'false';
 process.env.ZIP_CACHE_TTL_SECONDS = '120';
 let uploadDir: string;
@@ -124,6 +125,29 @@ beforeAll(async () => {
   await client`INSERT INTO users ("user", api_key) VALUES ('legacy', 'legacy-access-token')`;
   migrate();
   migrate();
+  const legacyText = 'legacy pre-paste text';
+  const legacyTextPath = path.join(uploadDir, 'legacy-before-paste.txt');
+  await Bun.write(legacyTextPath, legacyText);
+  await client`INSERT INTO files (key, owner_id, filename, size, real_filename, sha256) SELECT 'legacy-paste-migration', id, 'legacy-before-paste.txt', ${Buffer.byteLength(legacyText)}, 'original.txt', ${await hashFile(new Blob([legacyText]))} FROM users WHERE "user" = 'legacy'`;
+  const [beforeTextMigration] =
+    await client`SELECT * FROM files WHERE key = 'legacy-paste-migration'`;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const textMigration = Bun.spawnSync(
+      ['bun', 'run', 'build-tools/migrate-text.ts'],
+      { env: { ...process.env }, stdout: 'pipe', stderr: 'pipe' },
+    );
+    if (textMigration.exitCode !== 0)
+      throw new Error(textMigration.stderr.toString());
+  }
+  const [afterTextMigration] =
+    await client`SELECT id, key, owner_id, filename, size, real_filename, sha256, expires_at, created_at, paste_title FROM files WHERE key = 'legacy-paste-migration'`;
+  const { paste_title: oldPasteTitle, ...preservedLegacyText } =
+    afterTextMigration;
+  expect(oldPasteTitle).toBeNull();
+  expect(preservedLegacyText).toEqual(beforeTextMigration);
+  expect(await Bun.file(legacyTextPath).text()).toBe(legacyText);
+  await client`DELETE FROM files WHERE key = 'legacy-paste-migration'`;
+  await unlink(legacyTextPath);
   const collectionMigration = Bun.spawnSync(
     ['bun', 'run', 'build-tools/migrate-collections.ts'],
     { env: { ...process.env }, stdout: 'pipe', stderr: 'pipe' },
@@ -152,6 +176,43 @@ beforeAll(async () => {
   app.listen({ port: 0, hostname: '127.0.0.1' });
   base = `http://127.0.0.1:${app.server?.port}`;
 });
+const startText = (token: string, title: string, size: number, ttl?: number) =>
+  request('/ui-upload', {
+    method: 'POST',
+    headers: { ...bearer(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      files: [{ name: 'paste.txt', size }],
+      textTitle: title,
+      ...(ttl === undefined ? {} : { ttl }),
+    }),
+  });
+const uploadText = async (
+  token: string,
+  title: string,
+  content: string,
+  ttl?: number,
+) => {
+  const bytes = Buffer.from(content, 'utf8');
+  const response = await startText(token, title, bytes.length, ttl);
+  expect(response.status).toBe(201);
+  const session = await response.json();
+  if (bytes.length)
+    expect(
+      (
+        await request(`/ui-upload/${session.id}/0/0`, {
+          method: 'PUT',
+          headers: bearer(token),
+          body: bytes,
+        })
+      ).status,
+    ).toBe(204);
+  const completed = await request(`/ui-upload/${session.id}/complete`, {
+    method: 'POST',
+    headers: bearer(token),
+  });
+  expect(completed.status).toBe(200);
+  return completed.json();
+};
 
 test('browser errors use minimal pages and API errors preserve status without private details', async () => {
   for (const [route, status] of [
@@ -2630,6 +2691,327 @@ test('accounts CLI rotation revokes live web tokens and admin sessions without t
     env.ADMIN_USERS = originalAdmins;
   }
 }, 30000);
+
+test('Unicode text pastes preserve bytes, escape titles and share storage with ordinary immutable files', async () => {
+  const { db, createUser } = await import('../src/db/client');
+  const owner = await createUser(db, 'text-roundtrip', 'text-roundtrip-token');
+  const statsBefore = await (
+    await request('/adminpane/api/stats', { headers: bearer(dedicatedToken) })
+  ).json();
+  const content = '初音ミク ♡\n<script>alert("unsafe")</script>\nline2';
+  const title = 'x"><script>alert("title")</script>& ♡';
+  const { BASE_URL } = await import('../src/utils/constants');
+  const paste = await uploadText('text-roundtrip-token', title, content);
+  expect(paste.url).toBe(`${BASE_URL}/texts/${paste.key}`);
+  expect(paste.sha256).toBe(await hashFile(new Blob([content])));
+  const [stored] = await client`SELECT * FROM files WHERE key = ${paste.key}`;
+  expect(stored.paste_title).toBe(title);
+  expect(stored.size).toBe(Buffer.byteLength(content));
+  const route = '/texts/' + paste.key;
+  const page = await request(route);
+  expect(page.status).toBe(200);
+  expect(page.headers.get('content-type')).toContain('text/html');
+  expect(page.headers.get('cache-control')).toBe('no-store');
+  const html = await page.text();
+  expect(metaContent(html, 'og:title')).toBe(title);
+  expect(html).toContain('&lt;script&gt;');
+  expect(html).not.toContain('<script>alert("title")</script>');
+  expect(html).not.toContain('<script>alert("unsafe")</script>');
+  const infoResponse = await request(route + '/info');
+  expect(infoResponse.headers.get('content-type')).toContain(
+    'application/json',
+  );
+  expect(infoResponse.headers.get('cache-control')).toBe('no-store');
+  const info = await infoResponse.json();
+  expect(info.title).toBe(title);
+  expect(info.content).toBe(content);
+  expect(info.sha256).toBe(paste.sha256);
+  expect(info.size).toBe(Buffer.byteLength(content));
+  expect(info.expiresAt).toBeNull();
+  expect(Number.isFinite(Date.parse(info.createdAt))).toBe(true);
+  expect(info.url).toBe(paste.url);
+  expect(info.rawUrl).toBe(paste.url + '/raw');
+  const share = await request('/' + paste.key);
+  expect(share.status).toBe(302);
+  expect(share.headers.get('location')).toBe(paste.url);
+  const raw = await request(route + '/raw');
+  expect(raw.status).toBe(302);
+  expect(raw.headers.get('cache-control')).toBe('no-store');
+  const rawURL = new URL(raw.headers.get('location')!, base);
+  expect(rawURL.searchParams.get('download')).toBe('1');
+  const download = await request(rawURL.pathname + rawURL.search);
+  expect(download.status).toBe(200);
+  expect(download.headers.get('content-type')).toBe('application/octet-stream');
+  expect(download.headers.get('content-disposition')).toMatch(/^attachment;/);
+  expect(new Uint8Array(await download.arrayBuffer())).toEqual(
+    new Uint8Array(Buffer.from(content)),
+  );
+  const plain = await (
+    await upload('text-roundtrip-token', [new File([content], 'plain.txt')])
+  ).json();
+  const [ordinary] = await client`SELECT * FROM files WHERE key = ${plain.key}`;
+  expect(ordinary.paste_title).toBeNull();
+  expect((await stat(path.join(uploadDir, ordinary.filename))).ino).toBe(
+    (await stat(path.join(uploadDir, stored.filename))).ino,
+  );
+  expect((await request('/texts/' + plain.key)).status).toBe(404);
+  const ordinaryShare = await request('/' + plain.key);
+  expect(ordinaryShare.status).toBe(302);
+  expect(new URL(ordinaryShare.headers.get('location')!, base).pathname).toBe(
+    '/uploads/' + ordinary.filename,
+  );
+  const ownerRows =
+    await client`SELECT size FROM files WHERE owner_id = ${owner.id}`;
+  expect(ownerRows).toHaveLength(2);
+  const statsAfter = await (
+    await request('/adminpane/api/stats', { headers: bearer(dedicatedToken) })
+  ).json();
+  expect(statsAfter.fileCount).toBe(statsBefore.fileCount + 2);
+  expect(statsAfter.logicalBytes).toBe(
+    statsBefore.logicalBytes + 2 * Buffer.byteLength(content),
+  );
+  expect(statsAfter.physicalBytes).toBe(
+    statsBefore.physicalBytes + Buffer.byteLength(content),
+  );
+  const grouped = await request('/collections', {
+    method: 'POST',
+    headers: {
+      ...bearer('text-roundtrip-token'),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: 'Text and file',
+      files: [paste.key, plain.key],
+    }),
+  });
+  expect(grouped.status).toBe(201);
+  const collection = await grouped.json();
+  const collectionInfo = await (
+    await request('/collections/' + collection.key + '/info')
+  ).json();
+  const zipURL = new URL(collectionInfo.zip);
+  const archive = unzipSync(
+    new Uint8Array(
+      await (await request(zipURL.pathname + zipURL.search)).arrayBuffer(),
+    ),
+  );
+  expect(strFromU8(archive['paste.txt']!)).toBe(content);
+  expect(strFromU8(archive['plain.txt']!)).toBe(content);
+  const { removeFile } = await import('../src/utils/files');
+  expect(await removeFile(stored.id)).toBe(true);
+  for (const suffix of ['', '/info', '/raw'])
+    expect((await request(route + suffix)).status).toBe(404);
+  expect(await Bun.file(path.join(uploadDir, ordinary.filename)).text()).toBe(
+    content,
+  );
+  expect((await request(zipURL.pathname + zipURL.search)).status).toBe(410);
+});
+
+test('text manifests enforce byte limits, valid UTF-8, ownership and cancellation before publication', async () => {
+  const { db, createUser } = await import('../src/db/client');
+  const owner = await createUser(
+    db,
+    'text-validation',
+    'text-validation-token',
+  );
+  await createUser(db, 'text-validation-other', 'text-validation-other-token');
+  expect((await startText('invalid', 'Title', 1)).status).toBe(401);
+  const manifest = (body: unknown) =>
+    request('/ui-upload', {
+      method: 'POST',
+      headers: {
+        ...bearer('text-validation-token'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  for (const body of [
+    { files: [{ name: 'paste.txt', size: 0 }], textTitle: '  ' },
+    { files: [{ name: 'paste.html', size: 1 }], textTitle: 'Title' },
+    {
+      files: [
+        { name: 'a.txt', size: 1 },
+        { name: 'b.txt', size: 1 },
+      ],
+      textTitle: 'Title',
+    },
+    {
+      files: [{ name: 'paste.txt', size: 1 }],
+      textTitle: 'Title',
+      collectionName: 'Collection',
+    },
+  ])
+    expect((await manifest(body)).status).toBe(400);
+  expect(
+    (await startText('text-validation-token', 'Too big', 105)).status,
+  ).toBe(413);
+  expect(
+    (await startText('text-validation-token', 'Too big temporary', 105, 1))
+      .status,
+  ).toBe(413);
+  const session = await (
+    await startText('text-validation-token', 'Small', 3)
+  ).json();
+  expect(
+    (
+      await request(`/ui-upload/${session.id}/0/0`, {
+        method: 'PUT',
+        headers: bearer('text-validation-other-token'),
+        body: 'abc',
+      })
+    ).status,
+  ).toBe(404);
+  expect(
+    (
+      await request(`/ui-upload/${session.id}/0/0`, {
+        method: 'PUT',
+        headers: bearer('text-validation-token'),
+        body: 'abcd',
+      })
+    ).status,
+  ).toBe(413);
+  expect(
+    (
+      await request('/ui-upload/' + session.id, {
+        method: 'DELETE',
+        headers: bearer('text-validation-token'),
+      })
+    ).status,
+  ).toBe(204);
+  expect(
+    (
+      await request(`/ui-upload/${session.id}/complete`, {
+        method: 'POST',
+        headers: bearer('text-validation-token'),
+      })
+    ).status,
+  ).toBe(404);
+  for (const bytes of [
+    new Uint8Array([0xc0, 0xaf]),
+    new Uint8Array([0xe3, 0x81]),
+  ]) {
+    const invalid = await (
+      await startText('text-validation-token', 'Invalid UTF-8', bytes.length)
+    ).json();
+    expect(
+      (
+        await request(`/ui-upload/${invalid.id}/0/0`, {
+          method: 'PUT',
+          headers: bearer('text-validation-token'),
+          body: bytes,
+        })
+      ).status,
+    ).toBe(204);
+    const rejected = await request(`/ui-upload/${invalid.id}/complete`, {
+      method: 'POST',
+      headers: bearer('text-validation-token'),
+    });
+    expect(rejected.status).toBe(400);
+    expect(await rejected.text()).toContain('UTF-8');
+    expect(
+      (
+        await request('/ui-upload/' + invalid.id, {
+          method: 'DELETE',
+          headers: bearer('text-validation-token'),
+        })
+      ).status,
+    ).toBe(404);
+  }
+  expect(
+    (await client`SELECT id FROM files WHERE owner_id = ${owner.id}`).length,
+  ).toBe(0);
+  const { readTextContent } = await import('../src/utils/text-content');
+  let reads = 0;
+  let cancelled = false;
+  const disguised = new Blob([]);
+  Object.defineProperty(disguised, 'stream', {
+    value: () =>
+      new ReadableStream({
+        pull(controller) {
+          reads++;
+          controller.enqueue(new Uint8Array(64).fill(120));
+        },
+        cancel() {
+          cancelled = true;
+        },
+      }),
+  });
+  await expect(readTextContent(disguised)).rejects.toMatchObject({
+    status: 413,
+  });
+  expect(cancelled).toBe(true);
+  expect(reads).toBeLessThan(5);
+  const boundary = await uploadText(
+    'text-validation-token',
+    'Byte boundary',
+    'x'.repeat(104),
+  );
+  expect(
+    (await (await request('/texts/' + boundary.key + '/info')).json()).size,
+  ).toBe(104);
+  const specialContent = '\uFEFF初音\r\nline\0tail';
+  const special = await uploadText(
+    'text-validation-token',
+    'BOM and NUL',
+    specialContent,
+  );
+  const specialInfo = await (
+    await request('/texts/' + special.key + '/info')
+  ).json();
+  expect(specialInfo.content).toBe(specialContent);
+  expect(specialInfo.sha256).toBe(await hashFile(new Blob([specialContent])));
+  const empty = await uploadText('text-validation-token', 'Empty text', '');
+  expect(
+    (await (await request('/texts/' + empty.key + '/info')).json()).content,
+  ).toBe('');
+});
+
+test('temporary text pages reject expired, missing and symlink sources on every public view', async () => {
+  const { db, createUser } = await import('../src/db/client');
+  await createUser(db, 'text-expiry', 'text-expiry-token');
+  const paste = await uploadText(
+    'text-expiry-token',
+    'Temporary text',
+    'expires as text',
+    1,
+  );
+  const route = '/texts/' + paste.key;
+  const info = await (await request(route + '/info')).json();
+  expect(Number.isFinite(Date.parse(info.expiresAt))).toBe(true);
+  const original = path.join(uploadDir, 'temp', paste.filename);
+  const backup = original + '.fixture-backup';
+  await rename(original, backup);
+  let linked = false;
+  try {
+    for (const suffix of ['', '/info', '/raw'])
+      expect((await request(route + suffix)).status).toBe(404);
+    try {
+      await symlink(backup, original, 'file');
+      linked = true;
+    } catch (error) {
+      if (
+        !['EPERM', 'EACCES'].includes(
+          (error as NodeJS.ErrnoException).code ?? '',
+        )
+      )
+        throw error;
+    }
+    if (linked)
+      for (const suffix of ['', '/info', '/raw'])
+        expect((await request(route + suffix)).status).toBe(404);
+  } finally {
+    if (linked) await unlink(original);
+    await rename(backup, original);
+  }
+  expect((await request(route)).status).toBe(200);
+  await client`UPDATE files SET expires_at = now() - interval '1 second' WHERE key = ${paste.key}`;
+  for (const suffix of ['', '/info', '/raw']) {
+    const expired = await request(route + suffix);
+    expect(expired.status).toBe(404);
+    expect(expired.headers.get('cache-control')).toBe('no-store');
+  }
+  expect((await request('/' + paste.key)).status).toBe(404);
+});
 
 test('legacy HTTP upload returns 413 before a slow sender finishes', async () => {
   const { db, createUser } = await import('../src/db/client');

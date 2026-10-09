@@ -5,6 +5,7 @@ const maxSize = Number('{%maxSize%}');
 const maxTempSize = Number('{%maxTempSize%}');
 const maxBatchSize = Number('{%maxBatchSize%}');
 const maxFiles = Number('{%maxFiles%}');
+const maxTextSize = Number('{%maxTextSize%}');
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('uploadForm');
@@ -23,6 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const output = document.getElementById('output');
   const feedback = document.getElementById('uploadFeedback');
   const results = document.getElementById('uploadResults');
+  const textMode = document.getElementById('textMode');
+  const fileMode = document.getElementById('fileMode');
+  const pasteContent = document.getElementById('pasteContent');
+  const pasteTitle = document.getElementById('pasteTitle');
+  const textSummary = document.getElementById('textSummary');
+  const textProgress = document.getElementById('textProgress');
+  let mode = 'file';
   let selected = [];
   let uploading = false;
   const message = (text) => {
@@ -36,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const button = (label, action) => {
     const element = document.createElement('button');
     element.type = 'button';
-    element.textContent = `[ ${label} ]`;
+    element.textContent = `[ ${label.toLowerCase()} ]`;
     element.className = 'link-button';
     element.setAttribute('aria-label', label);
     element.addEventListener('click', async () => {
@@ -79,6 +87,22 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const validate = () => {
     const limit = temp.checked ? maxTempSize : maxSize;
+    if (mode === 'text') {
+      const bytes = new TextEncoder().encode(pasteContent.value).length;
+      const cap = Math.min(maxTextSize, limit, maxBatchSize);
+      const problem =
+        bytes > cap * 1024 * 1024 ? `Text must be at most ${cap} MB.` : '';
+      textSummary.textContent =
+        problem || `${bytes.toLocaleString()} UTF-8 bytes · Max ${cap} MB`;
+      textSummary.classList.toggle('error', !!problem);
+      submit.disabled =
+        uploading ||
+        !!problem ||
+        !pasteContent.value.length ||
+        !key.value.trim() ||
+        (temp.checked && !duration.value);
+      return !problem;
+    }
     let problem = '';
     if (selected.some((entry) => entry.converting))
       problem = 'Converting images...';
@@ -194,7 +218,11 @@ document.addEventListener('DOMContentLoaded', () => {
               return;
             entry.file = converted;
             entry.name = webpFilename(entry.name);
-            if (converted.size > maxSize * 1024 * 1024) {
+            if (
+              mode === 'file' &&
+              !uploading &&
+              converted.size > maxSize * 1024 * 1024
+            ) {
               temp.checked = true;
               duration.disabled = false;
               if (!duration.value) duration.value = '24h';
@@ -241,6 +269,39 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSelection();
     validate();
   };
+  const setMode = (next) => {
+    if (uploading) return;
+    mode = next;
+    const text = mode === 'text';
+    document.getElementById('fileSource').hidden = text;
+    document.getElementById('textSource').hidden = !text;
+    document.getElementById('collectionOptions').hidden = text;
+    document.getElementById('pasteTitleOption').hidden = !text;
+    const bytes = text
+      ? new TextEncoder().encode(pasteContent.value).length
+      : Math.max(0, ...selected.map((entry) => entry.file.size));
+    if (bytes > maxSize * 1024 * 1024) {
+      temp.checked = true;
+      duration.disabled = false;
+      if (!duration.value) duration.value = '24h';
+    }
+    textMode.setAttribute('aria-pressed', String(text));
+    fileMode.setAttribute('aria-pressed', String(!text));
+    validate();
+  };
+  textMode.addEventListener('click', () => setMode('text'));
+  fileMode.addEventListener('click', () => setMode('file'));
+  pasteContent.addEventListener('input', () => {
+    if (
+      new TextEncoder().encode(pasteContent.value).length >
+      maxSize * 1024 * 1024
+    ) {
+      temp.checked = true;
+      duration.disabled = false;
+      if (!duration.value) duration.value = '24h';
+    }
+    validate();
+  });
   uploader.addEventListener('click', (event) => {
     if (event.target !== picker && !uploading) picker.click();
   });
@@ -277,41 +338,73 @@ document.addEventListener('DOMContentLoaded', () => {
     collectionName.hidden = !collectionCheck.checked;
   });
 
-  const showQR = async (element, url, name) => {
+  const shareControls = (element, url, name) => {
+    const log = element.querySelector('.file-status');
     const holder = element.querySelector('.file-qr');
-    if (holder.childElementCount) {
+    const actions = element.querySelector('.file-actions');
+    let visible = false;
+    let version = 0;
+    let svg;
+    log.textContent = url;
+    log.hidden = true;
+    holder.hidden = true;
+    const copy = button('copy', async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        copy.textContent = '[ copied ]';
+      } catch {
+        copy.textContent = log.hidden ? '[ copy failed ]' : '[ select link ]';
+        if (!log.hidden) {
+          const range = document.createRange();
+          range.selectNodeContents(log);
+          const selection = window.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+      }
+      setTimeout(() => {
+        copy.textContent = '[ copy ]';
+      }, 1500);
+    });
+    const qrButton = document.createElement('button');
+    qrButton.type = 'button';
+    qrButton.className = 'link-button';
+    qrButton.textContent = '[ show qr ]';
+    qrButton.setAttribute('aria-pressed', 'false');
+    const render = () => {
+      log.hidden = !visible;
+      holder.hidden = !visible;
+      qrButton.textContent = visible ? '[ hide qr ]' : '[ show qr ]';
+      qrButton.setAttribute('aria-pressed', String(visible));
       holder.replaceChildren();
-      status(element, url);
-      return;
-    }
-    try {
-      // Avoid reusing the old dark-on-white SVG from browser/CDN caches.
-      const response = await fetch(
-        `/qrcode?text=${encodeURIComponent(url)}&v=2`,
-      );
-      if (!response.ok) throw new Error('Could not generate QR code.');
+      if (!visible || !svg) return;
       const image = document.createElement('img');
       image.alt = `QR code for ${name}`;
-      image.src =
-        'data:image/svg+xml;utf8,' + encodeURIComponent(await response.text());
-      element.querySelector('.file-qr').replaceChildren(image);
-      status(element, url);
-    } catch (error) {
-      status(element, error.message);
-    }
-  };
-  const copyLink = async (element, url) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      status(element, url);
-      const copy = element.querySelector('.file-actions button');
-      copy.textContent = '[ Copied ]';
-      setTimeout(() => {
-        copy.textContent = '[ Copy ]';
-      }, 1500);
-    } catch {
-      status(element, `Copy this link: ${url}`);
-    }
+      image.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+      holder.append(image);
+    };
+    qrButton.addEventListener('click', async () => {
+      visible = !visible;
+      const current = ++version;
+      render();
+      if (!visible || svg) return;
+      try {
+        const response = await fetch(
+          `/qrcode?text=${encodeURIComponent(url)}&v=2`,
+        );
+        if (!response.ok) throw new Error('QR unavailable');
+        const result = await response.text();
+        if (current !== version) return;
+        svg = result;
+        render();
+      } catch {
+        if (current !== version) return;
+        visible = false;
+        render();
+        qrButton.textContent = '[ retry qr ]';
+      }
+    });
+    actions.append(copy, qrButton);
   };
   const showResults = (files, collection) => {
     results.replaceChildren();
@@ -335,17 +428,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const checksumValue = document.createElement('code');
       checksumValue.textContent = file.sha256;
       checksum.append(checksumLabel, checksumValue);
-      const actions = element.querySelector('.file-actions');
-      actions.append(
-        button('Copy', () => copyLink(element, file.url)),
-        button('QR', () => showQR(element, file.url, file.realFilename)),
-      );
+      shareControls(element, file.url, file.realFilename);
       const metadata = document.createElement('div');
       metadata.className = 'file-meta';
       const log = element.querySelector('.file-status');
       element.insertBefore(metadata, log);
       metadata.append(log, checksum);
-      status(element, file.url);
       results.append(element);
     }
     if (collection) {
@@ -361,11 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
       element.querySelector('.file-name').replaceWith(link);
       link.target = '_blank';
       link.rel = 'noopener';
-      element.querySelector('.file-actions').append(
-        button('Copy', () => copyLink(element, collection.url)),
-        button('QR', () => showQR(element, collection.url, collection.name)),
-      );
-      status(element, collection.url);
+      shareControls(element, collection.url, collection.name);
       collectionResult.append(element);
     }
   };
@@ -373,14 +457,27 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (uploading || !validate() || submit.disabled) return;
+    const text = mode === 'text';
+    const title = pasteTitle.value.trim() || 'untitled';
+    let uploadEntries = selected;
+    if (text) {
+      const name = normalizeFilename(`${title}.txt`);
+      const file = new File([pasteContent.value], name, {
+        type: 'text/plain;charset=utf-8',
+      });
+      const element = row(name, file.size);
+      element.querySelector('.file-name').readOnly = true;
+      textProgress.replaceChildren(element);
+      uploadEntries = [{ file, name, row: element }];
+    }
     const names = uniqueFilenames(
-      selected.map((entry) => {
+      uploadEntries.map((entry) => {
         const name = entry.row.querySelector('.file-name').value;
         return entry.webp ? webpFilename(name) : name;
       }),
     );
     const manifest = {
-      files: selected.map((entry, index) => ({
+      files: uploadEntries.map((entry, index) => ({
         name: names[index],
         size: entry.file.size,
       })),
@@ -388,7 +485,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (temp.checked)
       manifest.ttl =
         parseInt(duration.value, 10) * (duration.value.endsWith('d') ? 24 : 1);
-    if (collectionCheck.checked)
+    if (text) manifest.textTitle = title;
+    if (!text && collectionCheck.checked)
       manifest.collectionName = collectionName.value.trim() || 'collection';
     const accessKey = key.value.trim();
     const authorization = { Authorization: `Bearer ${accessKey}` };
@@ -396,11 +494,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const active = new Set();
     let session;
     uploading = true;
-    [key, temp, duration, picker, collectionCheck, collectionName].forEach(
-      (element) => {
-        element.disabled = true;
-      },
-    );
+    [
+      key,
+      temp,
+      duration,
+      picker,
+      collectionCheck,
+      collectionName,
+      textMode,
+      fileMode,
+      pasteContent,
+      pasteTitle,
+    ].forEach((element) => {
+      element.disabled = true;
+    });
     selection.querySelectorAll('input,button').forEach((element) => {
       element.disabled = true;
     });
@@ -436,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         xhr.ontimeout = () => reject(new Error('Chunk upload timed out.'));
         xhr.onabort = () => reject(new Error('Upload cancelled.'));
         xhr.onloadend = () => active.delete(xhr);
-        xhr.send(selected[job.file].file.slice(job.start, job.end));
+        xhr.send(uploadEntries[job.file].file.slice(job.start, job.end));
       });
     try {
       session = await jsonRequest('/ui-upload', {
@@ -445,8 +552,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(manifest),
       });
       const jobs = [];
-      const loaded = selected.map(() => new Map());
-      selected.forEach((entry, index) => {
+      const loaded = uploadEntries.map(() => new Map());
+      uploadEntries.forEach((entry, index) => {
         status(entry.row, 'Uploading... 0%');
         for (
           let start = 0, chunk = 0;
@@ -469,8 +576,8 @@ document.addEventListener('DOMContentLoaded', () => {
           0,
         );
         status(
-          selected[job.file].row,
-          `Uploading... ${Math.round((uploaded / selected[job.file].file.size) * 100)}%`,
+          uploadEntries[job.file].row,
+          `Uploading... ${Math.round((uploaded / uploadEntries[job.file].file.size) * 100)}%`,
         );
       };
       const worker = async () => {
@@ -492,21 +599,26 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       const failed = workers.find((result) => result.status === 'rejected');
       if (failed) throw failed.reason;
-      selected.forEach((entry) => status(entry.row, 'Saving...'));
+      uploadEntries.forEach((entry) => status(entry.row, 'Saving...'));
       const response = await jsonRequest(`/ui-upload/${session.id}/complete`, {
         method: 'POST',
       });
       showResults(response.files, response.collection);
       message(
-        `Uploaded ${selected.length} file${selected.length === 1 ? '' : 's'}!`,
+        text
+          ? 'Text uploaded!'
+          : `Uploaded ${uploadEntries.length} file${uploadEntries.length === 1 ? '' : 's'}!`,
       );
-      selected = [];
-      picker.value = '';
-      selection.replaceChildren();
+      if (text) textProgress.replaceChildren();
+      else {
+        selected = [];
+        picker.value = '';
+        selection.replaceChildren();
+      }
     } catch (error) {
       controller.abort();
       active.forEach((xhr) => xhr.abort());
-      selected.forEach((entry) => status(entry.row, error.message));
+      uploadEntries.forEach((entry) => status(entry.row, error.message));
       message('Upload failed. Your selection is kept.');
       if (session) {
         // Wait for aborts to reach the server before discarding staged chunks.
@@ -521,11 +633,19 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } finally {
       uploading = false;
-      [key, temp, picker, collectionCheck, collectionName].forEach(
-        (element) => {
-          element.disabled = false;
-        },
-      );
+      [
+        key,
+        temp,
+        picker,
+        collectionCheck,
+        collectionName,
+        textMode,
+        fileMode,
+        pasteContent,
+        pasteTitle,
+      ].forEach((element) => {
+        element.disabled = false;
+      });
       duration.disabled = !temp.checked;
       selection.querySelectorAll('input,button').forEach((element) => {
         element.disabled = false;

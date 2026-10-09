@@ -23,6 +23,7 @@ export const PROJECT_DESCRIPTION = 'welcome to miku file sharing!!! meow';
 export const SHOULD_REDIRECT = env.SHOULD_REDIRECT;
 export const MAX_FILE_SIZE = env.MAX_FILE_SIZE;
 export const MAX_TEMP_FILE_SIZE = env.MAX_TEMP_FILE_SIZE;
+export const MAX_TEXT_SIZE = env.MAX_TEXT_SIZE;
 export const MAX_BATCH_FILE_SIZE =
   env.MAX_BATCH_FILE_SIZE ?? MAX_TEMP_FILE_SIZE;
 export const MAX_UPLOAD_FILES = 20;

@@ -2,15 +2,15 @@
 <main class="admin-container" id="adminPanel">
   <div class="admin-toolbar">
     <h1><span class="blue"><%= webname %></span> admin</h1>
-    <button type="button" class="link-button" id="adminRefresh">[ Refresh ]</button>
-    <button type="button" class="link-button" id="adminLogout">[ Sign out ]</button>
+    <button type="button" class="link-button" id="adminRefresh">[ refresh ]</button>
+    <button type="button" class="link-button" id="adminLogout">[ sign out ]</button>
   </div>
   <p id="adminStatus" role="status" aria-live="polite"></p>
   <div id="issuedToken" hidden>
     <label for="newToken">Save this token now. It will only be shown once.</label>
     <input id="newToken" type="text" readonly autocomplete="off" />
-    <button type="button" class="link-button" id="copyToken">[ Copy token ]</button>
-    <button type="button" class="link-button" id="dismissToken">[ Dismiss ]</button>
+    <button type="button" class="link-button" id="copyToken">[ copy token ]</button>
+    <button type="button" class="link-button" id="dismissToken">[ dismiss ]</button>
   </div>
   <section class="admin-section" aria-labelledby="storageHeading">
     <h2 id="storageHeading">Server storage</h2>
@@ -23,7 +23,7 @@
   <form id="createAccount" class="admin-create-form">
     <label>Username<input id="newUser" type="text" required pattern="[a-zA-Z0-9_-]{1,64}" maxlength="64" /></label>
     <label>Expires (optional)<input id="userExpiry" type="datetime-local" /></label>
-    <button type="submit" class="link-button">[ Create account ]</button>
+    <button type="submit" class="link-button">[ create account ]</button>
   </form>
   <div class="table-container">
     <table class="admin-account-table"><thead><tr><th>Account</th><th>Created</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="adminUsers"></tbody></table>
@@ -37,15 +37,15 @@
       <label id="cleanupAgeField">Age (days)<input id="cleanupAge" type="number" min="1" max="36500" value="30" required /></label>
       <label id="cleanupFromField" hidden>From (inclusive)<input id="cleanupFrom" type="datetime-local" /></label>
       <label id="cleanupToField" hidden>Until (exclusive)<input id="cleanupTo" type="datetime-local" /></label>
-      <button type="submit" class="link-button">[ Preview matches ]</button>
+      <button type="submit" class="link-button">[ preview matches ]</button>
     </form>
     <p class="admin-note">Times use your local timezone. Preview first; deleting files also makes their collection downloads unavailable.</p>
     <div id="cleanupPreview" hidden>
       <p id="cleanupSummary" role="status"></p>
       <div class="table-container"><table class="admin-preview-table"><thead><tr><th>File</th><th>Owner</th><th>Uploaded</th><th>Size</th></tr></thead><tbody id="cleanupFiles"></tbody></table></div>
       <p id="cleanupSampleNote" class="admin-note"></p>
-      <button id="confirmCleanup" type="button" class="link-button error">[ Delete matching files ]</button>
-      <button id="cancelCleanup" type="button" class="link-button">[ Cancel ]</button>
+      <button id="confirmCleanup" type="button" class="link-button error">[ delete matching files ]</button>
+      <button id="cancelCleanup" type="button" class="link-button">[ cancel ]</button>
     </div>
   </section>
   <section class="admin-section" aria-labelledby="filesHeading">
@@ -54,9 +54,9 @@
     <table class="admin-file-table"><thead><tr><th>File</th><th>Owner</th><th>Size</th><th>Uploaded / expires</th><th>SHA-256</th><th>Actions</th></tr></thead><tbody id="adminFiles"></tbody></table>
   </div>
   <div class="admin-toolbar">
-    <button type="button" class="link-button" id="previousFiles">[ Previous ]</button>
+    <button type="button" class="link-button" id="previousFiles">[ previous ]</button>
     <span id="filePage" role="status"></span>
-    <button type="button" class="link-button" id="nextFiles">[ Next ]</button>
+    <button type="button" class="link-button" id="nextFiles">[ next ]</button>
   </div>
   </section>
 </main>

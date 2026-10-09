@@ -34,9 +34,13 @@
         placeholder="Enter access key (the one i gave you)"
         required
       />
+      <div class="upload-mode" aria-label="Upload mode">
+        <button type="button" class="link-button" id="textMode" aria-pressed="false">[ text mode ]</button>
+        <button type="button" class="link-button" id="fileMode" aria-pressed="true">[ file mode ]</button>
+      </div>
 
       <!-- File picker -->
-      <div class="upload-source">
+      <div class="upload-source" id="fileSource">
       <div class="uploader" id="uploader" role="button" aria-label="Add files" tabindex="0">
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24">
           <path
@@ -54,11 +58,20 @@
       <div id="fileName" aria-live="polite"></div>
       <div class="file-table" id="selectedFiles" role="table" aria-label="Selected files"></div>
       </div>
+      <div class="text-source" id="textSource" hidden>
+        <textarea id="pasteContent" rows="12" aria-label="Text content" placeholder="Paste or write text here..."></textarea>
+        <p id="textSummary" role="status" aria-live="polite"></p>
+        <div id="textProgress" class="file-table"></div>
+      </div>
 
       <div class="upload-options">
-      <div class="optionContainer collection-options">
+      <div class="optionContainer collection-options" id="collectionOptions">
         <label title="Share one folder link"><input type="checkbox" id="collectionCheck" /> Collection</label>
         <input type="text" id="collectionName" placeholder="Collection name" maxlength="150" hidden />
+      </div>
+      <div class="optionContainer paste-title-option" id="pasteTitleOption" hidden>
+        <label for="pasteTitle">Title</label>
+        <input type="text" id="pasteTitle" placeholder="untitled" maxlength="150" />
       </div>
 
       <!-- Temporary option -->

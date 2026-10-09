@@ -6,6 +6,7 @@ import { handleAuth } from './utils/helpers';
 import { qrCodeHandler } from './qrcode';
 import { adminRoutes } from './admin';
 import { collectionRoutes } from './collections';
+import { textRoutes } from './texts';
 import { CHUNK_SIZE, chunkRoutes } from './chunk-upload';
 import { multipartWireLimit } from './utils/upload-stream';
 import { errorPage, wantsErrorPage } from './utils/error-pages';
@@ -48,6 +49,7 @@ export const createApp = () =>
     .get('/', () => Bun.file('dist/pages/index.html'))
     .use(adminRoutes())
     .use(collectionRoutes())
+    .use(textRoutes())
     .use(chunkRoutes())
     .post('/upload', UploadHandler, {
       parse: 'none',

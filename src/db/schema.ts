@@ -30,6 +30,7 @@ export const files = pgTable(
     size: integer('size').notNull(),
     realFilename: text('real_filename').notNull().default(''),
     sha256: text('sha256'),
+    pasteTitle: text('paste_title'),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

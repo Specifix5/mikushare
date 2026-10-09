@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${value.toLocaleString(undefined, { maximumFractionDigits: unit ? 1 : 0 })} ${units[unit]}`;
   };
   const controls = (actions, log, qr) => {
+    log.hidden = true;
+    qr.hidden = true;
     const state = {
       url: '',
       name: '',
@@ -32,34 +34,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const copy = document.createElement('button');
     copy.type = 'button';
     copy.className = 'link-button';
-    copy.textContent = '[ Copy ]';
+    copy.textContent = '[ copy ]';
     let copyTimer;
     copy.addEventListener('click', async () => {
       copy.disabled = true;
       try {
         await navigator.clipboard.writeText(state.url);
-        copy.textContent = '[ Copied ]';
+        copy.textContent = '[ copied ]';
       } catch {
-        copy.textContent = '[ Select link ]';
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(log);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
+        if (log.hidden) copy.textContent = '[ copy failed ]';
+        else {
+          copy.textContent = '[ select link ]';
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(log);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
       } finally {
         copy.disabled = false;
         clearTimeout(copyTimer);
         copyTimer = setTimeout(() => {
-          copy.textContent = '[ Copy ]';
+          copy.textContent = '[ copy ]';
         }, 1500);
       }
     });
     const qrButton = document.createElement('button');
     qrButton.type = 'button';
     qrButton.className = 'link-button';
-    qrButton.textContent = '[ QR ]';
+    qrButton.textContent = '[ show qr ]';
     qrButton.setAttribute('aria-pressed', 'false');
     const renderQR = () => {
+      log.hidden = !state.qrVisible;
+      qr.hidden = !state.qrVisible;
+      qrButton.textContent = state.qrVisible ? '[ hide qr ]' : '[ show qr ]';
       qr.replaceChildren();
       if (!state.qrVisible || !state.svg) return;
       const image = document.createElement('img');
@@ -68,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
       qr.append(image);
     };
     qrButton.addEventListener('click', async () => {
-      qrButton.textContent = '[ QR ]';
       state.qrVisible = !state.qrVisible;
       qrButton.setAttribute('aria-pressed', String(state.qrVisible));
       const version = ++state.qrVersion;
@@ -87,7 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (version !== state.qrVersion || !active) return;
         state.qrVisible = false;
         qrButton.setAttribute('aria-pressed', 'false');
-        qrButton.textContent = '[ Retry QR ]';
+        renderQR();
+        qrButton.textContent = '[ retry qr ]';
       }
     });
     actions.append(copy, qrButton);
@@ -107,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dispose() {
         state.qrVersion++;
         clearTimeout(copyTimer);
-        copy.textContent = '[ Copy ]';
+        copy.textContent = '[ copy ]';
       },
     };
   };
@@ -211,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       document.getElementById('collectionInfo').textContent =
         `Uploaded: ${formatDate(collection.createdAt)} · ${collection.files.length} file${collection.files.length === 1 ? '' : 's'} (${available} available) · ${formatBytes(totalBytes)} total`;
-      zip.textContent = `[ Download ${available} file${available === 1 ? '' : 's'} as ZIP ]`;
+      zip.textContent = `[ download ${available} file${available === 1 ? '' : 's'} as zip ]`;
       status.textContent = '';
       status.classList.remove('error');
       return collection;

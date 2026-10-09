@@ -4,6 +4,7 @@ const client = new SQL(databaseURL());
 try {
   await client.begin(async (tx) => {
     await tx`ALTER TABLE files ADD COLUMN IF NOT EXISTS sha256 text`;
+    await tx`ALTER TABLE files ADD COLUMN IF NOT EXISTS paste_title text`;
     await tx`CREATE TABLE IF NOT EXISTS collections (
       key text PRIMARY KEY, owner_id integer NOT NULL REFERENCES users(id),
       name text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()

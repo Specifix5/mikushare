@@ -8,6 +8,7 @@
     "accounts": "bun run src/accounts-cli.ts",
     "migrate:checksums": "bun run build-tools/migrate-checksums.ts",
     "migrate:collections": "bun run build-tools/migrate-collections.ts",
+    "migrate:text": "bun run build-tools/migrate-text.ts",
     "migrate:dedup": "bun run build-tools/migrate-dedup.ts",
     "hash:files": "bun run build-tools/hash-files.ts",
     "check": "tsc --noEmit",
@@ -47,5 +48,5 @@
     "zod": "^4.6.5",
     "zxing-wasm": "^2.2.4"
   },
-  "buildDate": "2026-10-09T15:37:30.984Z"
+  "buildDate": "2026-10-09T16:57:37.992Z"
 }

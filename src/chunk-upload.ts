@@ -12,11 +12,13 @@ import {
   MAX_BATCH_FILE_SIZE,
   MAX_FILE_SIZE,
   MAX_TEMP_FILE_SIZE,
+  MAX_TEXT_SIZE,
   MAX_UPLOAD_FILES,
 } from './utils/constants';
 import { byteLimit, requestStream, UploadError } from './utils/upload-stream';
 import { storeUploads } from './upload';
 import { uniqueFilenames } from './utils/filenames';
+import { textTitleSchema } from './utils/text-content';
 
 export const CHUNK_SIZE = 4 * 1024 * 1024;
 const SESSION_TTL = 30 * 60 * 1000;
@@ -32,6 +34,7 @@ const manifestSchema = z.object({
     .max(MAX_UPLOAD_FILES),
   ttl: z.number().min(1).max(168).optional(),
   collectionName: z.string().max(150).optional(),
+  textTitle: textTitleSchema.optional(),
 });
 type Manifest = z.infer<typeof manifestSchema>;
 interface Session {
@@ -151,6 +154,21 @@ export const chunkRoutes = () =>
           const parsed = manifestSchema.safeParse(value);
           if (!parsed.success) throw new UploadError('Invalid upload manifest');
           const manifest = parsed.data;
+          if (manifest.textTitle !== undefined) {
+            if (
+              manifest.files.length !== 1 ||
+              !/\.txt$/i.test(manifest.files[0]!.name) ||
+              manifest.collectionName !== undefined
+            )
+              throw new UploadError(
+                'Text pastes require one .txt file and no collection',
+              );
+            if (manifest.files[0]!.size > MAX_TEXT_SIZE * 1024 * 1024)
+              throw new UploadError(
+                `Max text size is ${MAX_TEXT_SIZE} MB`,
+                413,
+              );
+          }
           const limit = manifest.ttl ? MAX_TEMP_FILE_SIZE : MAX_FILE_SIZE;
           if (manifest.files.some((file) => file.size > limit * 1024 * 1024))
             throw new UploadError(`Max per file is ${limit} MB`, 413);
@@ -336,6 +354,7 @@ export const chunkRoutes = () =>
               uploads,
               session.manifest.ttl,
               session.manifest.collectionName,
+              session.manifest.textTitle,
             );
           } finally {
             await discard(params.id, session);

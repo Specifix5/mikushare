@@ -19,6 +19,7 @@ import {
   writeDeduplicated,
 } from './utils/dedup';
 import { parseUpload, UploadError } from './utils/upload-stream';
+import { readTextContent, textTitleSchema } from './utils/text-content';
 
 const MAX_LEGACY_UPLOADS = 16;
 const MAX_LEGACY_UPLOADS_PER_ACCOUNT = 4;
@@ -30,8 +31,24 @@ export const storeUploads = async (
   uploads: { name: string; blob: Blob }[],
   ttl?: number,
   collectionName?: string,
+  textTitle?: string,
 ) =>
   withStorageQueue(async () => {
+    let pasteTitle: string | undefined;
+    if (textTitle !== undefined) {
+      const parsed = textTitleSchema.safeParse(textTitle);
+      if (
+        !parsed.success ||
+        uploads.length !== 1 ||
+        !/\.txt$/i.test(uploads[0]!.name) ||
+        collectionName !== undefined
+      )
+        return new Response(
+          'Text pastes require a title, one .txt file and no collection',
+          { status: 400 },
+        );
+      pasteTitle = parsed.data;
+    }
     const names = uniqueFilenames(uploads.map((file) => file.name));
     const limit = ttl ? MAX_TEMP_FILE_SIZE : MAX_FILE_SIZE;
     if (uploads.some((file) => file.blob.size > limit * 1024 * 1024))
@@ -43,6 +60,15 @@ export const storeUploads = async (
       return new Response(`Max total is ${MAX_BATCH_FILE_SIZE} MB`, {
         status: 413,
       });
+    if (pasteTitle !== undefined) {
+      try {
+        await readTextContent(uploads[0]!.blob);
+      } catch (failure) {
+        if (failure instanceof UploadError)
+          return new Response(failure.message, { status: failure.status });
+        throw failure;
+      }
+    }
     const written: string[] = [];
     try {
       const results = await withTransaction(async (tx) => {
@@ -62,6 +88,7 @@ export const storeUploads = async (
             file.blob.size,
             ttl ? new Date(Date.now() + ttl * 60 * 60 * 1000) : undefined,
             sha256,
+            pasteTitle,
           );
           const filepath = path.join(
             UPLOADS_DIR,
@@ -76,7 +103,10 @@ export const storeUploads = async (
           );
           results.push({
             key: metadata.key,
-            url: `${BASE_URL}/${metadata.key}`,
+            url:
+              pasteTitle !== undefined
+                ? `${BASE_URL}/texts/${metadata.key}`
+                : `${BASE_URL}/${metadata.key}`,
             filename: metadata.filename,
             realFilename: name,
             sha256,

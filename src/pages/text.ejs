@@ -1,0 +1,20 @@
+<%- include('./partials/header.ejs') %>
+<main class="text-container">
+  <h1 id="textTitle">Text</h1>
+  <p id="textInfo"></p>
+  <div class="text-toolbar">
+    <button type="button" class="link-button" id="copyText" disabled>[ copy text ]</button>
+    <a id="rawText" hidden>[ raw ]</a>
+    <button type="button" class="link-button" id="copyTextLink" disabled>[ copy link ]</button>
+    <button type="button" class="link-button" id="textQRButton" disabled aria-pressed="false">[ show qr ]</button>
+    <a href="/">[ home ]</a>
+  </div>
+  <p id="textStatus" role="status" aria-live="polite">Loading text...</p>
+  <div id="textQR" class="file-qr" hidden></div>
+  <div class="text-view" id="textView" hidden>
+    <pre class="text-gutter" id="textLines" aria-hidden="true"></pre>
+    <pre class="text-content"><code id="textBody"></code></pre>
+  </div>
+  <details id="textChecksum" class="file-checksum" hidden><summary>sha-256</summary><code id="textHash"></code></details>
+</main>
+<%- include('./partials/footer.ejs') %>

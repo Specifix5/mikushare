@@ -2,7 +2,12 @@ import { lstat, realpath } from 'fs/promises';
 import { db, getFile, withTransaction } from './db/client';
 import { files } from './db/schema';
 import { and, eq, isNull, isNotNull } from 'drizzle-orm';
-import { FILES_URL, SHOULD_REDIRECT, UPLOADS_DIR } from './utils/constants';
+import {
+  BASE_URL,
+  FILES_URL,
+  SHOULD_REDIRECT,
+  UPLOADS_DIR,
+} from './utils/constants';
 import path from 'path';
 import { info } from './cli';
 import { isCrawler } from './utils/helpers';
@@ -51,6 +56,14 @@ export const GetFileHandler = async ({
     });
 
   const download = new URL(request.url).searchParams.get('download') === '1';
+  if (fileMetadata.pasteTitle !== null && !download)
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${BASE_URL}/texts/${fileMetadata.key}`,
+        'Cache-Control': 'no-store',
+      },
+    });
   const redirectLocation = `${FILES_URL}/uploads/${fileMetadata.expiresAt ? 'temp/' : ''}${fileMetadata.filename}?fn=${encodeURIComponent(fileMetadata.realFilename)}&v=3${download ? '&download=1' : ''}`;
   if (
     isCrawler(request.headers.get('user-agent')) &&
