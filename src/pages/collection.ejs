@@ -1,0 +1,15 @@
+<%- include('./partials/header.ejs') %>
+<main class="collection-container">
+  <h1><span class="blue" id="collectionTitle">Collection</span></h1>
+  <p id="collectionInfo" class="collection-info"></p>
+  <div class="collection-toolbar">
+    <a href="/">[ Home ]</a>
+    <div class="file-actions" id="collectionActions"></div>
+    <a id="collectionZip" hidden>[ Download ZIP ]</a>
+  </div>
+  <p id="collectionStatus" role="status" aria-live="polite">Loading files...</p>
+  <div class="file-table" id="collectionFiles" role="table" aria-label="Collection files"></div>
+  <p id="collectionLink" class="file-status"></p>
+  <div id="collectionQR" class="file-qr"></div>
+</main>
+<%- include('./partials/footer.ejs') %>

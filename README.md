@@ -74,6 +74,9 @@ location /_internal/uploads/ {
     internal;
     alias /var/mikushare/uploads/;
     types { } default_type application/octet-stream;
+    expires off;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Content-Security-Policy "sandbox; default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
     etag on;
 }
 
@@ -81,11 +84,19 @@ location /_internal/uploads/temp/ {
     internal;
     alias /var/mikushare/uploads/temp/;
     types { } default_type application/octet-stream;
+    expires off;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Content-Security-Policy "sandbox; default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
     etag on;
 }
 ```
 
 After you've setup your nginx configuration, you can make bun let nginx handle file serving by enabling `SHOULD_REDIRECT=true`
+
+Keep public `/uploads/` requests proxied to the app and preserve its cache headers.
+In the main site's proxy location, use `proxy_http_version 1.1;` and
+`proxy_request_buffering off;` so upload limits can reject streams early.
+Purge old cached upload responses from your CDN when deploying these headers.
 
 ## meow
 

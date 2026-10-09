@@ -5,33 +5,47 @@
   "version": "0.3.7",
   "private": true,
   "scripts": {
+    "accounts": "bun run src/accounts-cli.ts",
+    "migrate:checksums": "bun run build-tools/migrate-checksums.ts",
+    "migrate:collections": "bun run build-tools/migrate-collections.ts",
+    "migrate:dedup": "bun run build-tools/migrate-dedup.ts",
+    "hash:files": "bun run build-tools/hash-files.ts",
+    "check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test:integration": "bun test tests/integration.test.ts",
+    "test:stress": "bun test tests/stress.test.ts",
     "build": "bun run build-tools/build.ts",
     "start": "bun run dist/index.js",
     "dev": "bun run build-tools/build.ts && bun run dist/index.js"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.2",
-    "@stylistic/eslint-plugin-ts": "^4.4.1",
     "@types/bun": "latest",
-    "@typescript-eslint/parser": "^8.38.0",
-    "drizzle-kit": "^0.31.4",
-    "eslint-plugin-prettier": "^5.5.3",
-    "globals": "^16.3.0",
-    "postgres": "^3.4.7",
-    "prettier": "^3.6.2",
-    "typescript-eslint": "^8.38.0"
+    "@types/busboy": "^1.5.4",
+    "@typescript-eslint/parser": "^8.71.1",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9.39.5",
+    "eslint-plugin-prettier": "^5.5.6",
+    "globals": "^16.5.0",
+    "postgres": "^3.4.9",
+    "prettier": "^3.9.9",
+    "typescript-eslint": "^8.71.1"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@elysiajs/static": "^1.3.0",
+    "@elysiajs/static": "^1.4.10",
     "@types/ejs": "^3.1.5",
-    "dotenv": "^17.2.1",
-    "drizzle-orm": "^0.44.4",
+    "busboy": "^1.6.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.4",
     "ejs": "^3.1.10",
-    "elysia": "^1.3.8",
-    "zxing-wasm": "^2.2.1"
+    "elysia": "^1.4.30",
+    "fflate": "^0.8.3",
+    "file-type": "^22.1.1",
+    "zod": "^4.6.5",
+    "zxing-wasm": "^2.2.4"
   },
-  "buildDate": "2025-08-23T18:53:36.760Z"
+  "buildDate": "2026-10-09T15:37:30.984Z"
 }

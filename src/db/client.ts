@@ -1,9 +1,10 @@
 import { drizzle, type BunSQLQueryResultHKT } from 'drizzle-orm/bun-sql';
 import { SQL } from 'bun';
+import { databaseURL } from '../utils/env';
 import { eq, isNotNull, lt, and, sql } from 'drizzle-orm';
 import { randomBytes, randomUUID } from 'crypto';
-import { readFile, readdir, stat, exists, mkdir } from 'fs/promises';
-import { error, info, warn } from '../cli';
+import { readFile, readdir, stat, access, mkdir } from 'fs/promises';
+import { error, info, warn } from '../utils/logger';
 import { FailedToInsertUserError, KeyCollisionError } from './errors';
 import { UPLOADS_DIR } from '../utils/constants';
 import * as schema from './schema';
@@ -11,19 +12,18 @@ import path, { basename, extname } from 'path';
 import type { ExtractTablesWithRelations, InferSelectModel } from 'drizzle-orm';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 
-const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
+const client = new SQL(databaseURL());
 
-if (!DB_HOST || !DB_PORT || !DB_USER || !DB_PASSWORD || !DB_NAME) {
-  throw new Error('Database environment variables are not fully set');
-}
-
-const connectionString = `postgres://${encodeURIComponent(DB_USER)}:${encodeURIComponent(DB_PASSWORD)}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
-
-const client = new SQL(connectionString);
+const exists = (filepath: string): Promise<boolean> =>
+  access(filepath).then(
+    () => true,
+    () => false,
+  );
 
 await client`SET TIME ZONE 'UTC'`;
 
 export const db = drizzle({ client, schema });
+export const closeDatabase = () => client.close();
 
 export type DB = typeof db;
 
@@ -101,7 +101,9 @@ export const getUserFromKey = async (
     .where(eq(schema.users.apiKey, key))
     .limit(1);
 
-  return result[0] ?? null;
+  const user = result[0];
+  if (!user || (user.expiresAt && user.expiresAt <= new Date())) return null;
+  return user;
 };
 
 /**
@@ -171,18 +173,7 @@ export const deleteUserById = async (tx: DBLike, id: number): Promise<void> => {
  * @returns {Promise<boolean>} - A Promise that resolves to a boolean indicating if the key exists and is not expired.
  */
 export const keyExists = async (tx: DBLike, key: string): Promise<boolean> => {
-  const result = await tx
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.apiKey, key))
-    .limit(1);
-
-  if (result.length === 0) return false;
-
-  const u = result[0]!;
-  if (u.expiresAt && u.expiresAt < new Date()) return false;
-
-  return true;
+  return !!(await getUserFromKey(tx, key));
 };
 
 /**
@@ -205,6 +196,7 @@ export const addFileWithKey = async (
   realFilename: string,
   size: number,
   expiryDate?: Date,
+  sha256?: string,
 ): Promise<{ key: string; filename: string }> => {
   try {
     await tx.insert(schema.files).values({
@@ -213,6 +205,7 @@ export const addFileWithKey = async (
       filename,
       size,
       realFilename,
+      sha256: sha256 ?? null,
       expiresAt: expiryDate ?? null,
     });
   } catch (e) {
@@ -247,6 +240,7 @@ export const addFile = async (
   extname: string,
   size: number,
   expiryDate?: Date,
+  sha256?: string,
 ): Promise<{ key: string; filename: string }> => {
   const key = randomBytes(6).toString('base64url');
   const filename = randomUUID() + extname;
@@ -259,6 +253,7 @@ export const addFile = async (
     realFilename,
     size,
     expiryDate,
+    sha256,
   );
 
   return { key, filename };
@@ -367,7 +362,7 @@ export const getExpiredUsers = async (tx: DBLike): Promise<MikuUser[]> => {
 export const init_db = async () => {
   // Create Anonymous user
   await withTransaction(async (tx) => {
-    if (await userExists(tx, 'anonymous')) return;
+    if (await getUser(tx, 'anonymous')) return;
 
     info('KeyMigrator', 'Creating user Anonymous...');
     const anonymousUser = await createUser(tx, 'anonymous');
@@ -375,7 +370,7 @@ export const init_db = async () => {
     if (anonymousUser)
       info(
         'KeyMigrator',
-        `Successfully created user Anonymous with ID #${anonymousUser.id}, key ${anonymousUser.apiKey}`,
+        `Successfully created user Anonymous with ID #${anonymousUser.id}`,
       );
   });
 
@@ -401,18 +396,15 @@ export const init_db = async () => {
           if (!(await keyExists(tx, key))) {
             const newUser = key.split('_')[0];
             if (newUser) {
-              info('KeyMigrator', `Migrating key ${key} to user ${newUser}`);
+              info('KeyMigrator', `Migrating account ${newUser}`);
               const { user, id } = await createUser(tx, newUser, key);
               if (user) {
                 info(
                   'KeyMigrator',
-                  `ID #${id} Successfully migrated key ${key} to user ${user}`,
+                  `ID #${id} Successfully migrated user ${user}`,
                 );
               } else {
-                error(
-                  'KeyMigrator',
-                  `Failed to migrate key ${key} to user ${newUser}`,
-                );
+                error('KeyMigrator', `Failed to migrate user ${newUser}`);
               }
             }
           }
@@ -432,6 +424,7 @@ export const init_db = async () => {
       warn('FileMigrator', 'There is nothing to do');
     }
     for (const file of files) {
+      if (file.includes('.deleted-')) continue;
       const ext = extname(file);
       const fileName = basename(file, ext);
       const size = (await stat(path.join(UPLOADS_DIR, file))).size;
@@ -462,7 +455,7 @@ export const init_db = async () => {
 
     warn('FileMigrator', `Finished migrating files!`);
   } else {
-    await mkdir(UPLOADS_DIR);
+    await mkdir(UPLOADS_DIR, { recursive: true });
     warn('FileMigrator', `Created uploads directory at ${UPLOADS_DIR}`);
   }
 

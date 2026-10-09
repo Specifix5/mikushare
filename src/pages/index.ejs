@@ -1,81 +1,114 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <%- include('./partials/head.ejs', { description: 'welcome to miku file sharing!!! meow' }) %>
-    <script src="public/scripts/index.js?v=<%= css %>" lang="javascript"></script>
-  </head>
-  <body>
-    <div class="container">
-      <div class="center-container">
-        <h1>
-          welcome to <span class="blue"><%= webname %></span><img src="public/emojis/miku_leek.png" class="emoji">
-        </h1>
-        <div class="paragraph-container">
-          <p align="left">
-            This is essentially a file sharing service, for me and a couple
-            friends.
-          </p>
-          <p align="left">
-            Right now, it's
-            <span class="green">an invite-only</span> service, if you want to use
-            it, contact me at
-            <a href="https://specifix.dev/" target="_blank">my website</a>
-            and give a good reason. <br><br> I'll probably consider it! <span class="nobreak deviate">⸜(｡˃ ᵕ ˂ )⸝♡</span>
-          </p>
-          <p class="footnote" align="right">
-            <%= build_date %> v<%= project_version %>
-          </p>
-        </div>
-
-        <form id="uploadForm" enctype="multipart/form-data">
-          <!-- Access key -->
-          <input type="password" id="key" name="key" placeholder="Enter access key (the one i gave you)" required />
-
-          <!-- File picker -->
-          <label id="fileLabel" for="file">
-            <svg class="emoji" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20z"/></svg>
-
-            <span id="fileName">
-              Browse... (Max 65MB, Temp 95MB)
-            </span>
-          </label>
-          <input type="file" id="file" name="file" required hidden />
-
-          <!-- Temporary option -->
-          <div class="optionContainer">
-            <label id="temporaryLabel">
-              <input type="checkbox" id="temporaryCheck" />
-              Temporary File
-            </label>
-
-            <select id="durationSelect" name="duration" disabled>
-              <option value="" disabled selected>Select duration</option>
-              <option value="1h">1 hour</option>
-              <option value="2h">2 hours</option>
-              <option value="24h">24 hours</option>
-              <option value="48h">48 hours</option>
-              <option value="7d">7 days</option>
-            </select>
-          </div>
-
-          <div class="text-result" id="copyBtn">
-            <span class="underline hide" id="output"></span>
-            <svg class="emoji hide" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M7 3v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V3h1a2 2 0 0 1 2 2v11a6 6 0 0 1-6 6H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm5 11H9a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2m3-4H9a1 1 0 0 0-.117 1.993L9 12h6a1 1 0 1 0 0-2m-1-8a1 1 0 0 1 .117 1.993L14 4h-4a1 1 0 0 1-.117-1.993L10 2z"/></g></svg>
-          </div>
-
-          <div id="qrcodeHolder"></div>
-
-          <!-- Submit -->
-          <button id="uploadButton" type="submit" disabled>Upload</button>
-        </form>
-
-        <div class="flex-list">
-          <div class="oomf">
-            <img src="public/miku_approved.gif" width="88" height="31" loading="lazy" alt="MIKU APPROVED WEBSITE!!!!">
-          </div>
-          <img class="big" src="public/miku_ascii.png">
-        </div>
-      </div>
+<%- include ('./partials/header.ejs') %>
+<div class="container">
+  <div class="center-container">
+    <h1>
+      welcome to <span class="blue"><%= webname %></span
+      ><img src="public/emojis/miku_leek.png" class="emoji" />
+    </h1>
+    <div class="paragraph-container">
+      <p align="left">
+        This is essentially a file sharing service, for me and a couple friends.
+      </p>
+      <p align="left">
+        Right now, it's
+        <span class="green">an invite-only</span> service, if you want to use
+        it, contact me at
+        <a href="https://specifix.dev/" target="_blank">my website</a>
+        and give a good reason.
+      </p>
+      <p align="left">
+        I'll probably consider it!
+        <span class="nobreak deviate">⸜(｡˃ ᵕ ˂ )⸝♡</span>
+      </p>
+      <p class="footnote" align="right">
+        <%= build_date %> v<%= project_version %>
+      </p>
     </div>
-  </body>
-</html>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+      <!-- Access key -->
+      <input
+        type="password"
+        id="key"
+        name="key"
+        placeholder="Enter access key (the one i gave you)"
+        required
+      />
+
+      <!-- File picker -->
+      <div class="upload-source">
+      <div class="uploader" id="uploader" role="button" aria-label="Add files" tabindex="0">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24">
+          <path
+            fill="currentColor"
+            d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20z"
+          />
+        </svg>
+        <div class="uploader-text">
+          <strong>Drop files here</strong> or
+          <span class="blue underline">browse</span>
+          <div class="hint">Max per file <%= max_size %> MB (<%= max_temp_size %> MB temporary). Total up to <%= max_batch_size %> MB; <%= max_files %> files.</div>
+        </div>
+        <input type="file" id="file" name="file" multiple hidden />
+      </div>
+      <div id="fileName" aria-live="polite"></div>
+      <div class="file-table" id="selectedFiles" role="table" aria-label="Selected files"></div>
+      </div>
+
+      <div class="upload-options">
+      <div class="optionContainer collection-options">
+        <label title="Share one folder link"><input type="checkbox" id="collectionCheck" /> Collection</label>
+        <input type="text" id="collectionName" placeholder="Collection name" maxlength="150" hidden />
+      </div>
+
+      <!-- Temporary option -->
+      <div class="optionContainer">
+        <label id="temporaryLabel">
+          <input type="checkbox" id="temporaryCheck" />
+          Temporary File
+        </label>
+
+        <select id="durationSelect" name="duration" disabled>
+          <option value="" disabled selected>Select duration</option>
+          <option value="1h">1 hour</option>
+          <option value="2h">2 hours</option>
+          <option value="24h">24 hours</option>
+          <option value="48h">48 hours</option>
+          <option value="7d">7 days</option>
+        </select>
+      </div>
+      </div>
+
+      <div id="uploadFeedback" class="upload-feedback" hidden>
+      <p id="output" class="hide" role="status" aria-live="polite"></p>
+
+      <div id="collectionResult" class="file-table"></div>
+      <div class="file-table" id="uploadResults" aria-live="polite" role="table" aria-label="Uploaded files"></div>
+      </div>
+
+      <!-- Submit -->
+      <button id="uploadButton" type="submit" disabled>Upload</button>
+    </form>
+
+    <div class="flex-list">
+      <div class="oomf">
+        <img
+          src="public/miku_approved.gif"
+          width="88"
+          height="31"
+          loading="lazy"
+          alt="MIKU APPROVED WEBSITE!!!!"
+        />
+        <img
+          src="/public/hatsunelol.png"
+          width="88"
+          height="31"
+          loading="lazy"
+          alt="hatsune.lol"
+        />
+      </div>
+      <img class="big" src="public/miku_ascii.png" />
+    </div>
+  </div>
+</div>
+<%- include ('./partials/footer.ejs') %>

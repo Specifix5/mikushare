@@ -23,7 +23,7 @@ export const scheduleHourly = (task: () => unknown, delay = 0) => {
 };
 
 export const parseTime = (str: string): number => {
-  return Array.from(str.matchAll(/(\d+)([dh])/g))
+  return Array.from(str.matchAll(/(\d+)([dhms])/g))
     .map((match) => {
       const num = match[1];
       const unit = match[2];
@@ -82,8 +82,7 @@ export const CheckIfKeyValid = async (key: string): Promise<boolean> => {
 };
 
 export const handleAuth = async (request: Request) => {
-  const url = new URL(request.url);
-  const accessKey = url.searchParams.get('key');
+  const accessKey = getAccessKey(request);
 
   if (!accessKey || !(await CheckIfKeyValid(accessKey))) {
     return new Response('Unauthorized', {
@@ -93,4 +92,13 @@ export const handleAuth = async (request: Request) => {
       status: 401,
     });
   }
+};
+
+export const getAccessKey = (request: Request): string | null => {
+  const authorization = request.headers.get('authorization');
+  if (authorization) {
+    return /^Bearer\s+(\S+)$/i.exec(authorization)?.[1] ?? null;
+  }
+  // Keep existing API clients working; the browser uses Authorization instead.
+  return new URL(request.url).searchParams.get('key');
 };

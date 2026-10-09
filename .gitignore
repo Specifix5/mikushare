@@ -35,7 +35,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 keys
 uploads
+cache/
 build-tools/*.sh
+!build-tools/push.sh
 
 *.db
 *.sqlite
@@ -43,3 +45,6 @@ build-tools/*.sh
 drizzle
 
 *.lock
+!bun.lock
+
+*.tar.gz

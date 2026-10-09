@@ -1,7 +1,6 @@
 // @ts-check
 
 import tseslint from 'typescript-eslint';
-import stylisticTs from '@stylistic/eslint-plugin-ts';
 import parserTs from '@typescript-eslint/parser';
 import globals from 'globals';
 import eslintPluginPrettier from 'eslint-plugin-prettier';
@@ -9,17 +8,16 @@ import eslintPluginPrettier from 'eslint-plugin-prettier';
 export default tseslint.config(
   {
     // config with just ignores is the replacement for `.eslintignore`
-    ignores: ['**/build/**', '**/dist/**'],
+    ignores: ['**/build/**', '**/dist/**', '**/node_modules/**'],
   },
   ...tseslint.configs.recommendedTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   {
     plugins: {
       '@typescript-eslint': tseslint.plugin,
-      '@stylistic/ts': stylisticTs,
       prettier: eslintPluginPrettier,
     },
-    files: ['src/**/*.ts', 'src/**/*.js'],
+    files: ['**/*.ts', '**/*.js', '**/*.mjs'],
     languageOptions: {
       parser: parserTs,
       parserOptions: {
@@ -28,10 +26,11 @@ export default tseslint.config(
       },
       globals: {
         ...globals.node,
+        ...globals.browser,
       },
     },
     rules: {
-      '@stylistic/ts/semi': ['error', 'always'],
+      semi: ['error', 'always'],
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -92,6 +91,12 @@ export default tseslint.config(
   {
     // disable type-aware linting on JS files
     files: ['**/*.js', '**/*.mjs'],
+    ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    // HTTP/database fixtures intentionally assert untrusted JSON and raw SQL
+    // rows. Keep normal lint rules; use TypeScript checks for test types.
+    files: ['tests/**/*.ts'],
     ...tseslint.configs.disableTypeChecked,
   },
 );

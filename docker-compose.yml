@@ -10,7 +10,7 @@ services:
       TZ: UTC
       POSTGRES_INITDB_ARGS: '--auth=scram-sha-256'
     ports:
-      - '${DB_PORT}:5432'
+      - '127.0.0.1:${DB_PORT}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

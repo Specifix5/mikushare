@@ -1,0 +1,14 @@
+<%- include('./partials/header.ejs') %>
+<div class="container">
+  <main class="center-container">
+    <h1><span class="blue"><%= webname %></span> admin</h1>
+    <form id="adminLogin">
+      <label for="adminToken">Admin access token</label>
+      <input id="adminToken" type="password" autocomplete="off" required maxlength="512" />
+      <button type="submit">Sign in</button>
+    </form>
+    <p id="adminStatus" role="status" aria-live="polite"></p>
+    <p class="footnote">An authorized account or admin token is required.</p>
+  </main>
+</div>
+<%- include('./partials/footer.ejs') %>

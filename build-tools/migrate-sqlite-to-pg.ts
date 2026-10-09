@@ -1,3 +1,4 @@
+import { databaseURL } from '../src/utils/env';
 import { Database } from 'bun:sqlite';
 import { drizzle as drizzlePg } from 'drizzle-orm/bun-sql';
 import { SQL } from 'bun';
@@ -5,31 +6,24 @@ import * as schema from '../src/db/schema';
 
 const sqlite = new Database('database.db', { readonly: true });
 
-const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
-const url = DB_HOST?.startsWith('postgres://')
-  ? DB_HOST
-  : `postgres://${encodeURIComponent(DB_USER ?? '')}:${encodeURIComponent(DB_PASSWORD ?? '')}@${
-      DB_HOST ?? 'localhost'
-    }:${DB_PORT ?? '5432'}/${DB_NAME ?? ''}`;
-
-const client = new SQL(url!);
+const client = new SQL(databaseURL());
 await client`SET TIME ZONE 'UTC'`;
 const pg = drizzlePg({ client, schema });
 
-const toDate = (v: unknown) => (v ? new Date(String(v)) : null);
+const toDate = (v: string | null) => (v ? new Date(v) : null);
 
 async function migrateUsers() {
   const rows = sqlite
     .query(
       `SELECT id, user, api_key AS apiKey, expires_at AS expiresAt, created_at AS createdAt FROM users`,
     )
-    .all() as Array<{
+    .all() as {
     id: number;
     user: string;
     apiKey: string;
     expiresAt: string | null;
     createdAt: string;
-  }>;
+  }[];
 
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
@@ -61,7 +55,7 @@ async function migrateFiles() {
     .query(
       `SELECT id, key, owner_id AS ownerId, filename, size, expires_at AS expiresAt, created_at AS createdAt FROM files`,
     )
-    .all() as Array<{
+    .all() as {
     id: number;
     key: string;
     ownerId: number;
@@ -69,7 +63,7 @@ async function migrateFiles() {
     size: number;
     expiresAt: string | null;
     createdAt: string;
-  }>;
+  }[];
 
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
@@ -102,11 +96,15 @@ async function main() {
   await migrateUsers();
   await migrateFiles();
 
-  const [{ count: u }] = await client`SELECT COUNT(*)::int AS count FROM users`;
-  const [{ count: f }] = await client`SELECT COUNT(*)::int AS count FROM files`;
-  console.log(`Users: ${u}, Files: ${f}`);
+  const [users] = await client<
+    { count: number }[]
+  >`SELECT COUNT(*)::int AS count FROM users`;
+  const [files] = await client<
+    { count: number }[]
+  >`SELECT COUNT(*)::int AS count FROM files`;
+  console.log(`Users: ${users?.count}, Files: ${files?.count}`);
 
-  client.end();
+  await client.end();
   sqlite.close();
 }
 

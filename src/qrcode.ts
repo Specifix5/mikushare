@@ -9,7 +9,7 @@ export const makeQrSvg = async (opts: {
   const { svg } = await writeBarcode(text, {
     format: 'QRCode',
     scale,
-    withQuietZones: false,
+    withQuietZones: true,
     ecLevel: 'H',
   });
 
@@ -17,22 +17,25 @@ export const makeQrSvg = async (opts: {
     throw new Error('Failed to generate QR code SVG');
   }
 
-  const tinted = svg
+  // SVG images cannot inherit the page's currentColor. Use the normal text
+  // color explicitly, removing the white background rather than tinting it.
+  return svg
     .replace('<svg ', '<svg shape-rendering="crispEdges" ')
-    .replace(
-      /<svg[^>]*>/,
-      (m) => `${m}<style>.d{fill:currentColor;fill-opacity:.7}</style>`,
-    )
-    .replace(/fill="black"|fill="#000000?"/g, 'class="d"'); // override fills
-  return tinted;
+    .replace(/<rect\b[^>]*\bfill="(?:#fff(?:fff)?|white)"[^>]*\/?\s*>/gi, '')
+    .replace(/fill="(?:black|#000(?:000)?)"/gi, 'fill="#cdd6f4"');
 };
 
 export const qrCodeHandler = async ({ request }: { request: Request }) => {
   const url = new URL(request.url);
   const text = url.searchParams.get('text');
-  const scale = Number(url.searchParams.get('scale')) || 1;
+  const scale = Number(url.searchParams.get('scale') ?? 1);
+  if (!Number.isInteger(scale) || scale < 1 || scale > 8)
+    return new Response(
+      'Bad Request, scale must be an integer between 1 and 8',
+      { status: 400 },
+    );
 
-  if (!text || text.length < 1 || text.length > 512)
+  if (!text?.trim() || text.length > 512)
     return new Response('Bad Request, text must be between 1 and 512 chars', {
       status: 400,
     });

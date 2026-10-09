@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('./head.ejs') %>
+    <% if (script) { %>
+    <script
+      src="/public/scripts/<%= script %>.min.js?v=<%= css %>"
+      defer
+    ></script>
+    <% } %>
+  </head>
+  <body>
