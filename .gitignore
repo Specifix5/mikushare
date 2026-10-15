@@ -37,7 +37,6 @@ keys
 /uploads/
 cache/
 build-tools/*.sh
-!build-tools/push.sh
 
 *.db
 *.sqlite
