@@ -1,0 +1,33 @@
+<section class="file-panel pdf-reader" id="pdfPreview" aria-label="PDF viewer" hidden>
+  <div class="pdf-toolbar" role="toolbar" aria-label="PDF navigation">
+    <button type="button" class="link-button" data-pdf="previous" disabled>[ prev ]</button>
+    <label>Page <input data-pdf="page" type="number" min="1" value="1" aria-label="PDF page number" disabled /> / <span data-pdf="count">…</span></label>
+    <button type="button" class="link-button" data-pdf="next" disabled>[ next ]</button>
+    <button type="button" class="link-button" data-pdf="zoomOut" aria-label="Zoom out" disabled>[ − ]</button>
+    <output data-pdf="zoom" aria-label="PDF zoom">Fit</output>
+    <button type="button" class="link-button" data-pdf="zoomIn" aria-label="Zoom in" disabled>[ + ]</button>
+    <button type="button" class="link-button" data-pdf="fit" disabled>[ fit ]</button>
+    <button type="button" class="link-button" data-pdf="fullscreen" aria-pressed="false">[ full ]</button>
+  </div>
+  <div class="pdf-toolbar" role="toolbar" aria-label="PDF annotations">
+    <label>Tool <select data-pdf="tool" aria-label="Annotation tool" disabled><option value="select">Select text</option><option value="pen">Pen</option><option value="highlight">Highlight area</option><option value="eraser">Eraser</option></select></label>
+    <label>Color <input data-pdf="color" type="color" value="#a6e3a1" aria-label="Annotation color" disabled /></label>
+    <label>Width <input data-pdf="width" type="number" min="1" max="12" value="2" aria-label="Annotation width" disabled /></label>
+    <button type="button" class="link-button" data-pdf="undo" disabled>[ undo ]</button>
+    <button type="button" class="link-button" data-pdf="redo" disabled>[ redo ]</button>
+    <button type="button" class="link-button" data-pdf="export" disabled>[ save annotated PDF ]</button>
+  </div>
+  <p class="file-status pdf-status" data-pdf="status" role="status" aria-live="polite">Loading PDF viewer…</p>
+  <div class="pdf-toolbar" data-pdf="passwordPanel" hidden>
+    <label>Password <input data-pdf="password" type="password" autocomplete="off" aria-label="PDF password" /></label>
+    <button type="button" class="link-button" data-pdf="unlock">[ open ]</button>
+  </div>
+  <div class="pdf-scroll" data-pdf="scroll" tabindex="0" aria-label="PDF page">
+    <div class="pdf-sheet" data-pdf="sheet" hidden>
+      <canvas data-pdf="canvas" aria-label="PDF page content"></canvas>
+      <div class="pdf-text-layer" data-pdf="text"></div>
+      <svg data-pdf="overlay" class="pdf-annotations" xmlns="http://www.w3.org/2000/svg" aria-label="Vector annotations"></svg>
+    </div>
+  </div>
+  <p class="pdf-note">Save a copy to keep annotations. <a id="pdfDirect" target="_blank" rel="noopener">View original directly</a>.</p>
+</section>

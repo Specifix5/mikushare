@@ -1,4 +1,4 @@
-import { error } from '../utils/logger';
+import { error } from '../core/logger';
 
 export class BaseError extends Error {
   constructor(message?: string, ErrorOptions?: ErrorOptions) {

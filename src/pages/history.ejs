@@ -1,0 +1,15 @@
+<%- include('./partials/header.ejs') %>
+<main class="collection-container">
+  <h1><span class="blue">Previous files</span></h1>
+  <div class="collection-toolbar">
+    <a href="/">[ home ]</a>
+    <button type="button" class="link-button" id="historyRefresh">[ refresh ]</button>
+  </div>
+  <p id="historyStatus" role="status" aria-live="polite">Loading files...</p>
+  <div class="file-table" id="historyFiles" role="table" aria-label="Previous collections and files"></div>
+  <div class="collection-toolbar">
+    <button type="button" class="link-button" id="historyPrev" hidden>[ prev ]</button>
+    <button type="button" class="link-button" id="historyNext" hidden>[ next ]</button>
+  </div>
+</main>
+<%- include('./partials/footer.ejs') %>

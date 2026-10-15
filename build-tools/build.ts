@@ -6,7 +6,7 @@ import {
   MAX_TEMP_FILE_SIZE,
   MAX_TEXT_SIZE,
   MAX_UPLOAD_FILES,
-} from '../src/utils/constants';
+} from '../src/config/constants';
 import ejs from 'ejs';
 import path from 'path';
 import {
@@ -14,9 +14,10 @@ import {
   PROJECT_DESCRIPTION,
   PROJECT_VERSION,
   WEB_NAME,
-} from '../src/utils/constants';
+} from '../src/config/constants';
 import { mkdir } from 'fs/promises';
 import { unlink } from 'fs/promises';
+import { buildPDF } from '../src/pdf/build';
 
 const pageDir = path.resolve('./src/pages');
 const replacements: Record<string, string> = {
@@ -62,6 +63,7 @@ async function build() {
     await readFile('./package.json', 'utf-8'),
   ) as Record<string, unknown> & { buildDate: string };
   packageJSON.buildDate = new Date().toISOString();
+  replacements['{%assetVersion%}'] = encodeURIComponent(packageJSON.buildDate);
   await writeFile(
     './package.json',
     JSON.stringify(packageJSON, null, 2) + '\n',
@@ -99,46 +101,58 @@ async function build() {
               ? 'index'
               : file.startsWith('admin')
                 ? 'admin'
-                : file === 'text.ejs'
-                  ? 'text'
-                  : 'collection',
+                : file === 'history.ejs'
+                  ? 'history'
+                  : file === 'text.ejs'
+                    ? 'text'
+                    : file === 'file.ejs'
+                      ? 'file'
+                      : 'collection',
         }),
       );
     }
   }
 
-  // minify and replace all places of {%maxSize%} and {%maxTempSize%} in public/scripts
-  const scripts = await readdir('dist/public/scripts');
-  for (const file of scripts) {
-    const filePath = `dist/public/scripts/${file}`;
-    if (file.endsWith('.js')) {
-      let content = await readFile(filePath, 'utf-8');
-      for (const [pattern, value] of Object.entries(replacements)) {
-        content = content.replaceAll(pattern, value);
-      }
-      await writeFile(filePath, content);
-
-      const result = await Bun.build({
-        entrypoints: [filePath],
-        outdir: path.join('dist/public/scripts'),
-        minify: true,
-        naming: file.replace(/\.js$/, '.min.js'),
-        plugins: [
-          {
-            name: 'shared-filenames',
-            setup(build) {
-              build.onResolve({ filter: /^@miku\/filenames$/ }, () => ({
-                path: path.resolve('src/utils/filenames.ts'),
-              }));
-            },
+  const browserEntries = {
+    index: 'src/uploads/client.js',
+    history: 'src/accounts/history-client.js',
+    file: 'src/files/client.js',
+    collection: 'src/collections/client.js',
+    text: 'src/texts/client.js',
+    admin: 'src/admin/client.js',
+  };
+  for (const [name, source] of Object.entries(browserEntries)) {
+    const result = await Bun.build({
+      entrypoints: [source],
+      outdir: 'dist/public/scripts',
+      target: 'browser',
+      minify: true,
+      naming: name + '.min.js',
+      plugins: [
+        {
+          name: 'browser-config',
+          setup(build) {
+            build.onResolve({ filter: /^@miku\/filenames$/ }, () => ({
+              path: path.resolve('src/files/filenames.ts'),
+            }));
+            build.onLoad(
+              { filter: /\.(js|ts)$/ },
+              async ({ path: filename }) => {
+                let contents = await readFile(filename, 'utf8');
+                for (const [pattern, value] of Object.entries(replacements))
+                  contents = contents.replaceAll(pattern, value);
+                return {
+                  contents,
+                  loader: filename.endsWith('.ts') ? 'ts' : 'js',
+                };
+              },
+            );
           },
-        ],
-      });
-      if (!result.success)
-        throw new Error(result.logs.map((log) => log.message).join('\n'));
-
-      await unlink(filePath);
-    }
+        },
+      ],
+    });
+    if (!result.success)
+      throw new Error(result.logs.map((log) => log.message).join('\n'));
   }
 
   // minify css
@@ -165,6 +179,7 @@ async function build() {
     }
   }
 
+  await buildPDF();
   console.log('[build] Build finished!');
 }
 

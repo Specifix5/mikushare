@@ -1,5 +1,5 @@
 import { defineConfig } from 'drizzle-kit';
-import { databaseURL } from './src/utils/env';
+import { databaseURL } from './src/config/env';
 
 const url = databaseURL();
 

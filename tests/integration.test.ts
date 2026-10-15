@@ -13,8 +13,8 @@ import {
 } from 'fs/promises';
 import { tmpdir } from 'os';
 import path from 'path';
-import { hashFile } from '../src/utils/hashing';
-import { normalizeFilename, contentDisposition } from '../src/utils/filenames';
+import { hashFile } from '../src/files/hashing';
+import { normalizeFilename, contentDisposition } from '../src/files/filenames';
 import { unzipSync, strFromU8 } from 'fflate';
 
 // Never run destructive fixtures against the configured application database.
@@ -270,7 +270,7 @@ test('admin login bounds metadata and accepts configured HTTPS proxy origin with
     }),
   });
   expect(oversized.status).toBe(400);
-  const { env } = await import('../src/utils/env');
+  const { env } = await import('../src/config/env');
   const configuredUrl = env.BASE_URL;
   try {
     env.BASE_URL = 'https://public.fixture.example';
@@ -637,7 +637,7 @@ test('migration, upload, and admin lifecycle enforce permissions and preserve da
       })
     ).status,
   ).toBe(401);
-  const { env } = await import('../src/utils/env');
+  const { env } = await import('../src/config/env');
   env.ADMIN_TOKENS = [];
   env.ADMIN_USERS = [];
   expect(
@@ -671,7 +671,7 @@ test('portable filenames and Zod environment validation', async () => {
     () => new Headers({ 'Content-Disposition': disposition }),
   ).not.toThrow();
   expect(disposition).not.toMatch(/[^\x20-\x7e]/);
-  const { parseEnv } = await import('../src/utils/env');
+  const { parseEnv } = await import('../src/config/env');
   expect(parseEnv({ SHOULD_REDIRECT: 'false' }).SHOULD_REDIRECT).toBe(false);
   expect(
     parseEnv({ INIT_CLEANUP: 'true', ZIP_CACHE_TTL_SECONDS: '0' })
@@ -883,7 +883,7 @@ test('immutable collections stream ZIPs with mandatory revisions and expiry-awar
     Object.keys(unzipSync(new Uint8Array(await remaining.arrayBuffer()))),
   ).toEqual(['hatsune_miku_on_x.jpg']);
 
-  const { env } = await import('../src/utils/env');
+  const { env } = await import('../src/config/env');
   env.ZIP_CACHE_TTL_SECONDS = 0;
   const noCache = await request(
     new URL(updated.zip).pathname + new URL(updated.zip).search,
@@ -903,7 +903,7 @@ test('immutable collections stream ZIPs with mandatory revisions and expiry-awar
     Object.keys(unzipSync(new Uint8Array(await cacheFailure.arrayBuffer()))),
   ).toHaveLength(3);
   env.ZIP_CACHE_DIRECTORY = cacheDirectory;
-  const removeFile = await import('../src/utils/files');
+  const removeFile = await import('../src/files/service');
   const [source] =
     await client`SELECT id FROM files WHERE key = ${result.files[1].key}`;
   expect(await removeFile.removeFile(source.id)).toBe(true);
@@ -919,7 +919,7 @@ test('immutable collections stream ZIPs with mandatory revisions and expiry-awar
   expect(
     Object.keys(unzipSync(new Uint8Array(await afterDeleteZip.arrayBuffer()))),
   ).toEqual(['hatsune_miku_on_x.jpg', 'same_2.txt']);
-  const remove = await import('../src/utils/accounts');
+  const remove = await import('../src/accounts/service');
   expect(await remove.removeAccount('collection-owner')).toBe(true);
   const [collection] =
     await client`SELECT collections.* FROM collections JOIN users ON users.id = collections.owner_id WHERE key = ${key} AND users."user" = 'anonymous'`;
@@ -933,7 +933,7 @@ test('immutable collections stream ZIPs with mandatory revisions and expiry-awar
 
 test('dedup shares bytes across uploads and migration without changing links or collections', async () => {
   const { db, createUser } = await import('../src/db/client');
-  const { removeFile } = await import('../src/utils/files');
+  const { removeFile } = await import('../src/files/service');
   await createUser(db, 'dedup', 'dedup-test-key');
   const contents = 'shared deduplication fixture';
   const responses: Response[] = [];
@@ -1167,7 +1167,7 @@ test('UI chunks enforce ownership, exact lengths, atomic publication and cancell
 
 test('multipart and raw stream limits cancel reads before the body finishes', async () => {
   const { parseUpload, UploadError, byteLimit, requestStream } =
-    await import('../src/utils/upload-stream');
+    await import('../src/uploads/stream');
   const { pipeline } = await import('stream/promises');
   const { Writable } = await import('stream');
   const boundary = 'miku-stream-boundary';
@@ -1641,7 +1641,7 @@ test('bounded JSON metadata rejects oversized bodies after authorization', async
       ).status,
     ).toBe(expected);
   }
-  const { readJsonObject } = await import('../src/utils/json-body');
+  const { readJsonObject } = await import('../src/core/json-body');
   let reads = 0;
   let cancelled = false;
   const streamed = new Request('http://localhost/adminpane/session', {
@@ -1747,7 +1747,7 @@ test('collection HTML embeds and file info preserve dates and choose the first a
   expect(grouped.status).toBe(201);
   const collection = await grouped.json();
   const route = '/collections/' + collection.key;
-  const { BASE_URL, FILES_URL } = await import('../src/utils/constants');
+  const { BASE_URL, FILES_URL } = await import('../src/config/constants');
   const infoResponse = await request(route + '/info');
   expect(infoResponse.status).toBe(200);
   const info = await infoResponse.json();
@@ -1797,7 +1797,7 @@ test('collection HTML embeds and file info preserve dates and choose the first a
   const fallbackHtml = await (await request(route)).text();
   const fallback = new URL(metaContent(fallbackHtml, 'og:image')!);
   expect(fallback.pathname).toBe('/uploads/' + second.files[0].filename);
-  const remove = await import('../src/utils/files');
+  const remove = await import('../src/files/service');
   const [row] =
     await client`SELECT id FROM files WHERE key = ${second.files[0].key}`;
   expect(await remove.removeFile(row.id)).toBe(true);
@@ -2219,7 +2219,7 @@ test('external symlink members become unavailable to collections, ZIP revisions 
 
 test('legacy streaming reservations enforce per-account and global caps and release after completion', async () => {
   const { db, createUser } = await import('../src/db/client');
-  const { UploadHandler } = await import('../src/upload');
+  const { UploadHandler } = await import('../src/uploads/routes');
   const token = 'legacy-cap-owner-token';
   await createUser(db, 'legacy-cap-owner', token);
   const hold = (accessToken: string, gate: Promise<void>) => {
@@ -2332,9 +2332,9 @@ test('legacy streaming reservations enforce per-account and global caps and rele
 
 test('ZIP compression caps reject extra generators while allowing HEAD and cached downloads and releasing cancellations', async () => {
   const { db, createUser } = await import('../src/db/client');
-  const { readCollection } = await import('../src/utils/collections');
-  const { collectionZip } = await import('../src/utils/zip');
-  const { env, parseEnv } = await import('../src/utils/env');
+  const { readCollection } = await import('../src/collections/service');
+  const { collectionZip } = await import('../src/collections/zip');
+  const { env, parseEnv } = await import('../src/config/env');
   await createUser(db, 'zip-cap-owner', 'zip-cap-owner-token');
   const uploaded = await (
     await upload('zip-cap-owner-token', [
@@ -2621,12 +2621,12 @@ test('accounts CLI rotation revokes live web tokens and admin sessions without t
     'cli-web-old-token',
   ]);
   expect(create.exitCode).toBe(0);
-  const { env } = await import('../src/utils/env');
+  const { env } = await import('../src/config/env');
   const originalAdmins = env.ADMIN_USERS;
   env.ADMIN_USERS = [...originalAdmins, 'cli-web-admin'];
   try {
     const { adminFromToken, startAdminSession } =
-      await import('../src/utils/admin-auth');
+      await import('../src/admin/auth');
     const identity = await adminFromToken('cli-web-old-token');
     if (!identity) throw new Error('Missing CLI admin fixture');
     const cookie = startAdminSession(identity, new Request(base)).split(
@@ -2700,7 +2700,7 @@ test('Unicode text pastes preserve bytes, escape titles and share storage with o
   ).json();
   const content = '初音ミク ♡\n<script>alert("unsafe")</script>\nline2';
   const title = 'x"><script>alert("title")</script>& ♡';
-  const { BASE_URL } = await import('../src/utils/constants');
+  const { BASE_URL } = await import('../src/config/constants');
   const paste = await uploadText('text-roundtrip-token', title, content);
   expect(paste.url).toBe(`${BASE_URL}/texts/${paste.key}`);
   expect(paste.sha256).toBe(await hashFile(new Blob([content])));
@@ -2797,7 +2797,7 @@ test('Unicode text pastes preserve bytes, escape titles and share storage with o
   );
   expect(strFromU8(archive['paste.txt']!)).toBe(content);
   expect(strFromU8(archive['plain.txt']!)).toBe(content);
-  const { removeFile } = await import('../src/utils/files');
+  const { removeFile } = await import('../src/files/service');
   expect(await removeFile(stored.id)).toBe(true);
   for (const suffix of ['', '/info', '/raw'])
     expect((await request(route + suffix)).status).toBe(404);
@@ -2920,7 +2920,7 @@ test('text manifests enforce byte limits, valid UTF-8, ownership and cancellatio
   expect(
     (await client`SELECT id FROM files WHERE owner_id = ${owner.id}`).length,
   ).toBe(0);
-  const { readTextContent } = await import('../src/utils/text-content');
+  const { readTextContent } = await import('../src/texts/content');
   let reads = 0;
   let cancelled = false;
   const disguised = new Blob([]);
@@ -3013,6 +3013,192 @@ test('temporary text pages reject expired, missing and symlink sources on every 
   expect((await request('/' + paste.key)).status).toBe(404);
 });
 
+test('admin custom account tokens persist exactly, retain generated defaults and enforce uniqueness', async () => {
+  const create = (body: unknown) =>
+    request('/adminpane/api/users', {
+      method: 'POST',
+      headers: {
+        ...bearer(dedicatedToken),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  const exact = 'Token!42_"quoted":/+=.~-[]{}';
+  const response = await create({
+    user: 'custom-exact',
+    token: ' \t' + exact + '\r\n ',
+  });
+  expect(response.status).toBe(201);
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  const issued = await response.json();
+  expect(issued.token).toBe(exact);
+  const [persisted] =
+    await client`SELECT api_key FROM users WHERE "user" = 'custom-exact'`;
+  expect(persisted.api_key).toBe(exact);
+  expect(
+    (
+      await upload(exact, [
+        new File(['custom-token-authenticated'], 'custom.txt'),
+      ])
+    ).status,
+  ).toBe(200);
+  const generated: string[] = [];
+  for (const body of [
+    { user: 'custom-default' },
+    { user: 'custom-empty', token: '' },
+    { user: 'custom-whitespace', token: ' \t\r\n ' },
+  ]) {
+    const created = await create(body);
+    expect(created.status).toBe(201);
+    const result = await created.json();
+    expect(typeof result.token).toBe('string');
+    expect(result.token.length).toBeGreaterThan(0);
+    const [saved] =
+      await client`SELECT api_key FROM users WHERE "user" = ${body.user}`;
+    expect(saved.api_key).toBe(result.token);
+    generated.push(result.token);
+  }
+  expect(new Set(generated).size).toBe(3);
+  const duplicate = await create({ user: 'custom-duplicate', token: exact });
+  expect(duplicate.status).toBe(409);
+  expect(await duplicate.text()).not.toContain(exact);
+  expect(
+    (await client`SELECT id FROM users WHERE "user" = 'custom-duplicate'`)
+      .length,
+  ).toBe(0);
+  expect(
+    (
+      await create({
+        user: 'custom-exact',
+        token: 'different-token-same-username',
+      })
+    ).status,
+  ).toBe(409);
+  for (const token of ['expired-access-token', dedicatedToken]) {
+    const user =
+      token === dedicatedToken ? 'custom-reserved' : 'custom-expired-collision';
+    expect((await create({ user, token })).status).toBe(409);
+    expect(
+      (await client`SELECT id FROM users WHERE "user" = ${user}`).length,
+    ).toBe(0);
+  }
+  const raced = await Promise.all(
+    ['custom-race-a', 'custom-race-b'].map((user) =>
+      create({ user, token: 'custom-concurrent-token' }),
+    ),
+  );
+  expect(raced.map((result) => result.status).sort()).toEqual([201, 409]);
+  const rows =
+    await client`SELECT "user", api_key FROM users WHERE api_key = 'custom-concurrent-token'`;
+  expect(rows).toHaveLength(1);
+  expect(['custom-race-a', 'custom-race-b']).toContain(rows[0].user);
+  expect(
+    (
+      await upload('custom-concurrent-token', [
+        new File(['race-token-authenticated'], 'race.txt'),
+      ])
+    ).status,
+  ).toBe(200);
+  const maximum = 'Z'.repeat(512);
+  const atBoundary = await create({
+    user: 'custom-token-boundary',
+    token: maximum,
+  });
+  expect(atBoundary.status).toBe(201);
+  expect((await atBoundary.json()).token).toBe(maximum);
+  expect(
+    (
+      await upload(maximum, [
+        new File(['boundary-token-authenticated'], 'boundary.txt'),
+      ])
+    ).status,
+  ).toBe(200);
+});
+
+test('admin custom token validation and cookie CSRF guards reject invalid account mutations', async () => {
+  const create = (
+    body: unknown,
+    headers: HeadersInit = bearer(dedicatedToken),
+  ) => {
+    const requestHeaders = new Headers(headers);
+    requestHeaders.set('Content-Type', 'application/json');
+    return request('/adminpane/api/users', {
+      method: 'POST',
+      headers: requestHeaders,
+      body: JSON.stringify(body),
+    });
+  };
+  for (const [index, token] of [
+    null,
+    123,
+    false,
+    [],
+    {},
+    'inside whitespace',
+    'a\tb',
+    'a\nb',
+    'a\0b',
+    'a\u0001b',
+    '初音',
+    'x'.repeat(513),
+  ].entries()) {
+    const user = `custom-invalid-${index}`;
+    const result = await create({ user, token });
+    expect(result.status).toBe(400);
+    expect(
+      (await client`SELECT id FROM users WHERE "user" = ${user}`).length,
+    ).toBe(0);
+  }
+  expect(
+    (
+      await create(
+        { user: 'custom-unauthorized', token: 'must-not-create' },
+        {},
+      )
+    ).status,
+  ).toBe(401);
+  expect(
+    (
+      await create(
+        { user: 'custom-nonadmin', token: 'must-not-create' },
+        bearer('friend-access-token'),
+      )
+    ).status,
+  ).toBe(401);
+  const { adminFromToken, startAdminSession } =
+    await import('../src/admin/auth');
+  const identity = await adminFromToken(dedicatedToken);
+  if (!identity) throw new Error('Missing custom-token admin fixture');
+  const cookie = startAdminSession(identity, new Request(base)).split(';')[0]!;
+  expect(
+    (
+      await create(
+        { user: 'custom-csrf', token: 'must-not-create' },
+        { Cookie: cookie, Origin: 'https://attacker.example' },
+      )
+    ).status,
+  ).toBe(401);
+  expect(
+    (
+      await create(
+        { user: 'custom-origin-missing', token: 'must-not-create' },
+        { Cookie: cookie },
+      )
+    ).status,
+  ).toBe(401);
+  const valid = await create(
+    { user: 'custom-cookie', token: 'valid-same-origin-token' },
+    { Cookie: cookie, Origin: base },
+  );
+  expect(valid.status).toBe(201);
+  expect((await valid.json()).token).toBe('valid-same-origin-token');
+  expect(
+    (
+      await client`SELECT id FROM users WHERE "user" IN ('custom-unauthorized', 'custom-nonadmin', 'custom-csrf', 'custom-origin-missing')`
+    ).length,
+  ).toBe(0);
+});
+
 test('legacy HTTP upload returns 413 before a slow sender finishes', async () => {
   const { db, createUser } = await import('../src/db/client');
   await createUser(db, 'http-recovery', 'http-recovery-token');
@@ -3070,4 +3256,312 @@ test('legacy HTTP upload returns 413 before a slow sender finishes', async () =>
     new File(['recovered-after-overflow'], 'recovery.txt'),
   ]);
   expect(recovery.status).toBe(200);
+});
+
+test('multi-file uploads always create numbered collections, including concurrent and chunked uploads', async () => {
+  const { db, createUser } = await import('../src/db/client');
+  await createUser(db, 'auto-collection', 'auto-collection-token');
+  const results = await Promise.all(
+    [0, 1].map(async (index) => {
+      const response = await upload('auto-collection-token', [
+        new File(['one'], 'one-' + index + '.txt'),
+        new File(['two'], 'two-' + index + '.txt'),
+      ]);
+      expect(response.status).toBe(200);
+      return response.json();
+    }),
+  );
+  const numbers = results.map((result) => {
+    expect(result.collection.name).toMatch(/^Unnamed Collection #\d+$/);
+    expect(result.files).toHaveLength(2);
+    for (const file of result.files)
+      expect(new URL(file.url).searchParams.get('collection')).toBe(
+        result.collection.key,
+      );
+    return Number(result.collection.name.split('#')[1]);
+  });
+  expect(new Set(numbers).size).toBe(2);
+  const single = await upload('auto-collection-token', [
+    new File(['single'], 'single.txt'),
+  ]);
+  const singleResult = await single.json();
+  expect(singleResult.collection).toBeNull();
+  const manual = await request('/collections', {
+    method: 'POST',
+    headers: {
+      ...bearer('auto-collection-token'),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: '  ', files: [singleResult.key] }),
+  });
+  expect(manual.status).toBe(201);
+  const manualCollection = await manual.json();
+  expect(Number(manualCollection.name.split('#')[1])).toBeGreaterThan(
+    Math.max(...numbers),
+  );
+  const started = await request('/ui-upload', {
+    method: 'POST',
+    headers: {
+      ...bearer('auto-collection-token'),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      files: [
+        { name: 'empty-a.txt', size: 0 },
+        { name: 'empty-b.txt', size: 0 },
+      ],
+    }),
+  });
+  expect(started.status).toBe(201);
+  const session = await started.json();
+  const completed = await request('/ui-upload/' + session.id + '/complete', {
+    method: 'POST',
+    headers: bearer('auto-collection-token'),
+  });
+  expect(completed.status).toBe(200);
+  expect((await completed.json()).collection.name).toMatch(
+    /^Unnamed Collection #\d+$/,
+  );
+});
+
+test('collection file pages show escaped directory headings and reject unrelated collection context', async () => {
+  const { db, createUser } = await import('../src/db/client');
+  await createUser(db, 'breadcrumb-owner', 'breadcrumb-token');
+  const uploaded = await upload('breadcrumb-token', [
+    new File(['a'], 'first.txt'),
+    new File(['b'], 'second.txt'),
+  ]);
+  const result = await uploaded.json();
+  const info = await (
+    await request('/collections/' + result.collection.key + '/info')
+  ).json();
+  const member = info.files[0];
+  const pageURL = new URL(member.pageUrl);
+  expect(pageURL.searchParams.get('collection')).toBe(result.collection.key);
+  const browser = await request(pageURL.pathname + pageURL.search, {
+    headers: { Accept: 'text/html' },
+  });
+  expect(browser.status).toBe(200);
+  const html = await browser.text();
+  expect(html).toContain(result.collection.name + '</a> / first.txt');
+  expect(html).toContain('href="' + info.url + '"');
+  const details = await (
+    await request('/file-info/' + member.key + pageURL.search)
+  ).json();
+  expect(details.collection.name).toBe(result.collection.name);
+  expect(details.url).toBe(member.pageUrl);
+  const standalone = await upload('breadcrumb-token', [
+    new File(['outside'], 'outside.txt'),
+  ]);
+  const outside = await standalone.json();
+  const forged = await (
+    await request('/file-info/' + outside.key + pageURL.search)
+  ).json();
+  expect(forged.collection).toBeNull();
+  const hostileName = '<img src=x onerror=alert(1)> & folder';
+  await client`UPDATE collections SET name = ${hostileName} WHERE key = ${result.collection.key}`;
+  const hostile = await (
+    await request(pageURL.pathname + pageURL.search, {
+      headers: { Accept: 'text/html' },
+    })
+  ).text();
+  expect(hostile).toContain('&lt;img src=x onerror=alert(1)&gt; &amp; folder');
+  expect(hostile).not.toContain('<img src=x onerror=alert(1)>');
+  const plain = await (
+    await request('/' + member.key, { headers: { Accept: 'text/html' } })
+  ).text();
+  expect(plain).toContain('<h1 id="fileName">first.txt</h1>');
+});
+
+test('private account history groups owned files, paginates and rejects shared tokens', async () => {
+  const { createUser, db } = await import('../src/db/client');
+  const owner = await createUser(db, 'history-owner', 'history-owner-token');
+  const other = await createUser(db, 'history-other', 'history-other-token');
+  const shared = await createUser(
+    db,
+    'history-public',
+    'history-public-token',
+    undefined,
+    true,
+  );
+  const headers = bearer('history-owner-token');
+  const aloneResponse = await upload('history-owner-token', [
+    new File(['solo'], 'solo.txt'),
+  ]);
+  expect(aloneResponse.status).toBe(200);
+  const alone = (await aloneResponse.json()).files[0];
+  const groupedResponse = await upload('history-owner-token', [
+    new File(['one'], 'one.txt'),
+    new File(['two'], 'two.txt'),
+  ]);
+  expect(groupedResponse.status).toBe(200);
+  const grouped = await groupedResponse.json();
+  const history = await request('/account/files', { headers });
+  expect(history.status).toBe(200);
+  expect(history.headers.get('cache-control')).toBe('no-store');
+  expect(history.headers.get('vary')).toBe('Authorization');
+  const listing = await history.json();
+  expect(
+    listing.entries.map((entry: { key: string }) => entry.key).sort(),
+  ).toEqual([alone.key, grouped.collection.key].sort());
+  expect(
+    listing.entries.find(
+      (entry: { kind: string }) => entry.kind === 'collection',
+    ).count,
+  ).toBe(2);
+  expect(
+    listing.entries.find((entry: { kind: string }) => entry.kind === 'file')
+      .downloadUrl,
+  ).toContain('?download=1');
+  expect(
+    await (
+      await request('/account/files', {
+        headers: bearer('history-other-token'),
+      })
+    ).json(),
+  ).toEqual({ entries: [], hasMore: false });
+  for (const token of ['', 'invalid', 'expired-access-token']) {
+    expect(
+      (await request('/account/files', { headers: bearer(token) })).status,
+    ).toBe(401);
+  }
+  expect((await request('/account/files?key=history-owner-token')).status).toBe(
+    401,
+  );
+  expect(
+    (
+      await request('/account/files', {
+        headers: bearer('history-public-token'),
+      })
+    ).status,
+  ).toBe(403);
+  expect(
+    await (
+      await request('/account/info', {
+        headers: bearer('history-public-token'),
+      })
+    ).json(),
+  ).toEqual({ public: true });
+  expect(await (await request('/account/info', { headers })).json()).toEqual({
+    public: false,
+  });
+  const [anonymous] =
+    await client`SELECT api_key, public FROM users WHERE "user" = 'anonymous'`;
+  expect(anonymous.public).toBe(true);
+  expect(
+    (await request('/account/files', { headers: bearer(anonymous.api_key) }))
+      .status,
+  ).toBe(403);
+  for (const offset of ['-1', 'NaN', '1.5', '1000001']) {
+    expect(
+      (await request('/account/files?offset=' + offset, { headers })).status,
+    ).toBe(400);
+  }
+  await client`INSERT INTO files (key, owner_id, filename, size, real_filename, created_at)
+    SELECT 'history-page-' || n, ${owner.id}, 'page-' || n, 0, 'page-' || n, '2020-01-01'::timestamptz FROM generate_series(1, 51) n`;
+  const first = await (await request('/account/files', { headers })).json();
+  const second = await (
+    await request('/account/files?offset=50', { headers })
+  ).json();
+  expect(first.entries).toHaveLength(50);
+  expect(first.hasMore).toBe(true);
+  expect(second.entries).toHaveLength(3);
+  expect(second.hasMore).toBe(false);
+  const keys = [...first.entries, ...second.entries].map(
+    (entry: { key: string }) => entry.key,
+  );
+  expect(new Set(keys).size).toBe(53);
+  expect(JSON.stringify(first)).not.toContain(other.apiKey);
+  expect(JSON.stringify(first)).not.toContain(shared.apiKey);
+});
+
+test('admin can create and change public accounts and visibility mutations require admin authorization', async () => {
+  const mutate = (
+    user: string,
+    body: unknown,
+    headers: HeadersInit = bearer(dedicatedToken),
+  ) =>
+    request('/adminpane/api/users/' + user, {
+      method: 'PATCH',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  const response = await request('/adminpane/api/users', {
+    method: 'POST',
+    headers: { ...bearer(dedicatedToken), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user: 'history-admin-public',
+      token: 'history-admin-public-token',
+      public: true,
+    }),
+  });
+  expect(response.status).toBe(201);
+  expect((await response.json()).public).toBe(true);
+  expect(
+    (
+      await request('/account/files', {
+        headers: bearer('history-admin-public-token'),
+      })
+    ).status,
+  ).toBe(403);
+  expect((await mutate('history-admin-public', { public: false })).status).toBe(
+    200,
+  );
+  expect(
+    (
+      await request('/account/files', {
+        headers: bearer('history-admin-public-token'),
+      })
+    ).status,
+  ).toBe(200);
+  expect((await mutate('history-admin-public', { public: true })).status).toBe(
+    200,
+  );
+  expect(
+    (
+      await request('/account/files', {
+        headers: bearer('history-admin-public-token'),
+      })
+    ).status,
+  ).toBe(403);
+  expect(
+    (await mutate('history-admin-public', { public: false }, {})).status,
+  ).toBe(401);
+  expect(
+    (
+      await mutate(
+        'history-admin-public',
+        { public: false },
+        bearer('history-other-token'),
+      )
+    ).status,
+  ).toBe(401);
+  expect(
+    (await mutate('history-admin-public', { public: 'false' })).status,
+  ).toBe(400);
+  expect((await mutate('anonymous', { public: false })).status).toBe(400);
+  expect(
+    (await mutate('missing-history-account', { public: true })).status,
+  ).toBe(404);
+  const users = await (
+    await request('/adminpane/api/users', { headers: bearer(dedicatedToken) })
+  ).json();
+  expect(
+    users.find((user: { user: string }) => user.user === 'history-admin-public')
+      .public,
+  ).toBe(true);
+  const { adminFromToken, startAdminSession } =
+    await import('../src/admin/auth');
+  const admin = await adminFromToken(dedicatedToken);
+  if (!admin) throw new Error('Missing admin');
+  const cookie = startAdminSession(admin, new Request(base)).split(';')[0]!;
+  expect(
+    (
+      await mutate(
+        'history-admin-public',
+        { public: false },
+        { Cookie: cookie, Origin: 'https://evil.example' },
+      )
+    ).status,
+  ).toBe(401);
 });

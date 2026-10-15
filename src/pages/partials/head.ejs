@@ -2,7 +2,7 @@
 <title>miku meow</title>
 <meta name="title" content="miku meow" />
 <meta name="description" content="<%= description %>" />
-<meta name="robots" content="<%= script === 'admin' ? 'noindex, nofollow' : 'index, follow' %>" />
+<meta name="robots" content="<%= ['admin', 'history'].includes(script) ? 'noindex, nofollow' : 'index, follow' %>" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#87D5FF" />

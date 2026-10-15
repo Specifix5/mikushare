@@ -35,6 +35,7 @@
         required
       />
       <div class="upload-mode" aria-label="Upload mode">
+        <button type="button" class="link-button" id="previousFiles" hidden>[ prev files ]</button>
         <button type="button" class="link-button" id="textMode" aria-pressed="false">[ text mode ]</button>
         <button type="button" class="link-button" id="fileMode" aria-pressed="true">[ file mode ]</button>
       </div>
@@ -56,6 +57,9 @@
         <input type="file" id="file" name="file" multiple hidden />
       </div>
       <div id="fileName" aria-live="polite"></div>
+      <div class="image-options" id="allWebPOption" hidden>
+        <label><input type="checkbox" id="allWebP" /> Save All as WebP</label>
+      </div>
       <div class="file-table" id="selectedFiles" role="table" aria-label="Selected files"></div>
       </div>
       <div class="text-source" id="textSource" hidden>
@@ -65,9 +69,9 @@
       </div>
 
       <div class="upload-options">
-      <div class="optionContainer collection-options" id="collectionOptions">
-        <label title="Share one folder link"><input type="checkbox" id="collectionCheck" /> Collection</label>
-        <input type="text" id="collectionName" placeholder="Collection name" maxlength="150" hidden />
+      <div class="optionContainer collection-options" id="collectionOptions" hidden>
+        <label for="collectionName">Collection</label>
+        <input type="text" id="collectionName" placeholder="Collection name (optional)" maxlength="150" />
       </div>
       <div class="optionContainer paste-title-option" id="pasteTitleOption" hidden>
         <label for="pasteTitle">Title</label>

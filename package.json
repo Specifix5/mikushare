@@ -5,7 +5,7 @@
   "version": "0.4.0",
   "private": true,
   "scripts": {
-    "accounts": "bun run src/accounts-cli.ts",
+    "accounts": "bun run src/accounts/cli.ts",
     "migrate:checksums": "bun run build-tools/migrate-checksums.ts",
     "migrate:collections": "bun run build-tools/migrate-collections.ts",
     "migrate:text": "bun run build-tools/migrate-text.ts",
@@ -43,10 +43,14 @@
     "drizzle-orm": "^0.45.4",
     "ejs": "^3.1.10",
     "elysia": "^1.4.30",
+    "exifr": "^7.1.3",
     "fflate": "^0.8.3",
     "file-type": "^22.1.1",
+    "music-metadata": "^12.2.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
     "zod": "^4.6.5",
     "zxing-wasm": "^2.2.4"
   },
-  "buildDate": "2026-10-09T16:57:37.992Z"
+  "buildDate": "2026-10-15T15:02:29.238Z"
 }

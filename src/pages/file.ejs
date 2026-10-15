@@ -1,0 +1,16 @@
+<%- include('./partials/header.ejs') %>
+<main class="file-page" id="filePage">
+  <header class="file-page-header">
+    <h1 id="fileName">__FILE_NAME__</h1>
+    <p id="fileSummary" class="file-status"></p>
+  </header>
+  <%- include('./partials/file-actions.ejs') %>
+  <%- include('./partials/file-preview.ejs') %>
+  <%- include('./partials/metadata-panel.ejs', { panelId: 'fileDetails', panelTitle: 'File information', panelStatus: '' }) %>
+  <div id="embeddedMetadata">
+    <%- include('./partials/metadata-panel.ejs', { panelId: 'mediaDetails', panelTitle: 'Embedded metadata', panelStatus: 'None' }) %>
+  </div>
+  <noscript><p>Enable JavaScript for previews, metadata, and sharing controls. You can download the original file above.</p></noscript>
+</main>
+<script type="application/json" id="fileData">__FILE_DATA__</script>
+<%- include('./partials/footer.ejs') %>

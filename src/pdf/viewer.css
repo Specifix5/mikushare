@@ -1,0 +1,182 @@
+.pdf-reader {
+  min-width: 0;
+}
+.pdf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--surface);
+}
+.pdf-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+  color: var(--text-color);
+}
+.pdf-toolbar input,
+.pdf-toolbar select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 150px;
+  border: 1px solid var(--surface);
+  border-radius: 0;
+  background: var(--background-color);
+  color: var(--text-color);
+  padding: 2px 4px;
+}
+.pdf-toolbar input[type='number'] {
+  width: 4.5em;
+}
+.pdf-toolbar input[type='color'] {
+  width: 30px;
+  height: 26px;
+  padding: 1px;
+  cursor: pointer;
+}
+.pdf-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pdf-toolbar [aria-label='PDF zoom'] {
+  min-width: 4em;
+  text-align: center;
+}
+.pdf-status:not(:empty) {
+  padding: 6px 0;
+}
+.pdf-scroll {
+  overflow: auto;
+  max-height: 72vh;
+  padding: 8px;
+  background: var(--background-accent-color);
+  overscroll-behavior: contain;
+}
+.pdf-sheet {
+  position: relative;
+  margin: 0 auto;
+  background: #fff;
+  isolation: isolate;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+}
+.pdf-sheet > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pdf-annotations {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+.pdf-reader[data-tool='pen'] .pdf-annotations,
+.pdf-reader[data-tool='highlight'] .pdf-annotations {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+.pdf-reader[data-tool='eraser'] .pdf-annotations {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: cell;
+}
+.pdf-reader[data-loading='true'] .pdf-annotations {
+  pointer-events: none;
+}
+.pdf-note {
+  margin: 6px 0 0;
+  font-size: 0.85em;
+  opacity: 0.65;
+}
+.pdf-reader:fullscreen,
+.pdf-reader.pdf-expanded {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--background-color);
+}
+.pdf-reader.pdf-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.pdf-reader:fullscreen .pdf-scroll,
+.pdf-reader.pdf-expanded .pdf-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+.pdf-reader [hidden] {
+  display: none !important;
+}
+
+/* Minimal PDF.js TextLayer styles, without the stock viewer/editor UI.
+ * TextLayer layout conventions: Mozilla PDF.js, Apache-2.0 (see LICENSES.txt). */
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-align: initial;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 1;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.pdf-text-layer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  user-select: text;
+}
+.pdf-text-layer > :not(.markedContent),
+.pdf-text-layer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x))
+    scale(var(--min-font-size-inv));
+}
+.pdf-text-layer .markedContent {
+  display: contents;
+}
+.pdf-text-layer span[role='img'] {
+  user-select: none;
+  cursor: default;
+}
+.pdf-text-layer ::selection {
+  background: #7ad4e466;
+  color: transparent;
+}
+@media (max-width: 600px) {
+  .pdf-toolbar {
+    gap: 4px 8px;
+  }
+  .pdf-reader:fullscreen,
+  .pdf-reader.pdf-expanded {
+    padding: 8px;
+  }
+}

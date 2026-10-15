@@ -1,4 +1,4 @@
-import { databaseURL } from '../src/utils/env';
+import { databaseURL } from '../src/config/env';
 import { SQL } from 'bun';
 
 const client = new SQL(databaseURL());

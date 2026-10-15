@@ -5,11 +5,11 @@
   <div class="text-toolbar">
     <button type="button" class="link-button" id="copyText" disabled>[ copy text ]</button>
     <a id="rawText" hidden>[ raw ]</a>
-    <button type="button" class="link-button" id="copyTextLink" disabled>[ copy link ]</button>
-    <button type="button" class="link-button" id="textQRButton" disabled aria-pressed="false">[ show qr ]</button>
+    <button type="button" class="link-button" id="textQRButton" disabled aria-expanded="false">[ link ]</button>
     <a href="/">[ home ]</a>
   </div>
   <p id="textStatus" role="status" aria-live="polite">Loading text...</p>
+  <p id="textLink" class="file-status" hidden></p>
   <div id="textQR" class="file-qr" hidden></div>
   <div class="text-view" id="textView" hidden>
     <pre class="text-gutter" id="textLines" aria-hidden="true"></pre>

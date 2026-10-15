@@ -1,12 +1,12 @@
 import { drizzle, type BunSQLQueryResultHKT } from 'drizzle-orm/bun-sql';
 import { SQL } from 'bun';
-import { databaseURL } from '../utils/env';
+import { databaseURL } from '../config/env';
 import { eq, isNotNull, lt, and, sql } from 'drizzle-orm';
 import { randomBytes, randomUUID } from 'crypto';
 import { readFile, readdir, stat, access, mkdir } from 'fs/promises';
-import { error, info, warn } from '../utils/logger';
+import { error, info, warn } from '../core/logger';
 import { FailedToInsertUserError, KeyCollisionError } from './errors';
-import { UPLOADS_DIR } from '../utils/constants';
+import { UPLOADS_DIR } from '../config/constants';
 import * as schema from './schema';
 import path, { basename, extname } from 'path';
 import type { ExtractTablesWithRelations, InferSelectModel } from 'drizzle-orm';
@@ -21,6 +21,9 @@ const exists = (filepath: string): Promise<boolean> =>
   );
 
 await client`SET TIME ZONE 'UTC'`;
+// Upgrade existing accounts before any schema-wide account reads (including the CLI).
+await client`ALTER TABLE users ADD COLUMN IF NOT EXISTS public boolean NOT NULL DEFAULT false`;
+await client`UPDATE users SET public = true WHERE "user" = 'anonymous' AND public = false`;
 
 export const db = drizzle({ client, schema });
 export const closeDatabase = () => client.close();
@@ -66,6 +69,7 @@ export const createUser = async (
   user: string,
   key?: string,
   expiryDate?: Date,
+  isPublic = false,
 ): Promise<MikuUser> => {
   const apiKey = key ?? `${user}_${randomBytes(16).toString('hex')}`;
 
@@ -74,6 +78,7 @@ export const createUser = async (
     .values({
       user,
       apiKey,
+      public: user === 'anonymous' || isPublic,
       expiresAt: expiryDate ?? null,
     })
     .returning();
@@ -364,6 +369,7 @@ export const getExpiredUsers = async (tx: DBLike): Promise<MikuUser[]> => {
 };
 
 export const init_db = async () => {
+  await client`CREATE SEQUENCE IF NOT EXISTS unnamed_collection_number`;
   // Create Anonymous user
   await withTransaction(async (tx) => {
     if (await getUser(tx, 'anonymous')) return;

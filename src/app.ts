@@ -1,15 +1,18 @@
+import { accountRoutes } from './accounts/routes';
 import { Elysia } from 'elysia';
 import staticPlugin from '@elysiajs/static';
-import { UploadHandler } from './upload';
-import { GetFileHandler, GetFileUploads } from './getFile';
-import { handleAuth } from './utils/helpers';
-import { qrCodeHandler } from './qrcode';
-import { adminRoutes } from './admin';
-import { collectionRoutes } from './collections';
-import { textRoutes } from './texts';
-import { CHUNK_SIZE, chunkRoutes } from './chunk-upload';
-import { multipartWireLimit } from './utils/upload-stream';
-import { errorPage, wantsErrorPage } from './utils/error-pages';
+import { UploadHandler } from './uploads/routes';
+import { GetFileHandler, GetFileUploads } from './files/routes';
+import { handleAuth } from './core/helpers';
+import { qrCodeHandler } from './sharing/qrcode';
+import { adminRoutes } from './admin/routes';
+import { collectionRoutes } from './collections/routes';
+import { textRoutes } from './texts/routes';
+import { filePageRoutes } from './files/pages';
+import { CHUNK_SIZE, chunkRoutes } from './uploads/chunks';
+import { multipartWireLimit } from './uploads/stream';
+import { errorPage, wantsErrorPage } from './core/error-pages';
+import { pdfAssetRoutes } from './pdf/assets';
 
 export const createApp = () =>
   new Elysia({
@@ -37,7 +40,13 @@ export const createApp = () =>
       )
         return errorPage(response.status);
     })
-    .use(staticPlugin({ assets: 'dist/public' }))
+    .use(pdfAssetRoutes())
+    .use(
+      staticPlugin({
+        assets: 'dist/public',
+        ignorePatterns: ['.DS_Store', '.git', '.env', /[\\/]pdf[\\/]/],
+      }),
+    )
     .get(
       '/favicon.ico',
       () =>
@@ -47,9 +56,11 @@ export const createApp = () =>
         }),
     )
     .get('/', () => Bun.file('dist/pages/index.html'))
+    .use(accountRoutes())
     .use(adminRoutes())
     .use(collectionRoutes())
     .use(textRoutes())
+    .use(filePageRoutes())
     .use(chunkRoutes())
     .post('/upload', UploadHandler, {
       parse: 'none',

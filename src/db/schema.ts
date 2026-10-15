@@ -1,17 +1,20 @@
 import {
   pgTable,
+  boolean,
   text,
   integer,
   serial,
   timestamp,
   primaryKey,
   index,
+  pgSequence,
 } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   user: text('user').notNull().unique(),
   apiKey: text('api_key').notNull().unique(),
+  public: boolean('public').notNull().default(false),
   expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
     .defaultNow()
@@ -38,6 +41,8 @@ export const files = pgTable(
   },
   (table) => [index('files_sha256_idx').on(table.sha256)],
 );
+
+export const unnamedCollectionNumber = pgSequence('unnamed_collection_number');
 
 export const collections = pgTable('collections', {
   key: text('key').primaryKey(),

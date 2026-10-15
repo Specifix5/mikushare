@@ -1,5 +1,5 @@
 import { SQL } from 'bun';
-import { databaseURL } from '../src/utils/env';
+import { databaseURL } from '../src/config/env';
 
 const client = new SQL(databaseURL());
 try {

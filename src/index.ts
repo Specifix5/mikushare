@@ -1,8 +1,8 @@
-import { env } from './utils/env';
+import { env } from './config/env';
 import { init_db } from './db/client';
-import { PORT } from './utils/constants';
-import { info, init_cli } from './cli';
-import { init_cleanup } from './utils/cleanup';
+import { PORT } from './config/constants';
+import { info, init_cli } from './accounts/commands';
+import { init_cleanup } from './core/cleanup';
 import { createApp } from './app';
 
 await init_db();

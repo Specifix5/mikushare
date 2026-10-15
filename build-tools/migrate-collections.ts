@@ -1,8 +1,9 @@
 import { SQL } from 'bun';
-import { databaseURL } from '../src/utils/env';
+import { databaseURL } from '../src/config/env';
 const client = new SQL(databaseURL());
 try {
   await client.begin(async (tx) => {
+    await tx`CREATE SEQUENCE IF NOT EXISTS unnamed_collection_number`;
     await tx`ALTER TABLE files ADD COLUMN IF NOT EXISTS sha256 text`;
     await tx`ALTER TABLE files ADD COLUMN IF NOT EXISTS paste_title text`;
     await tx`CREATE TABLE IF NOT EXISTS collections (

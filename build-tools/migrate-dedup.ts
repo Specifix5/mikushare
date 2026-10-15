@@ -4,9 +4,9 @@ import { link, readdir, rename, stat, unlink } from 'fs/promises';
 import { eq } from 'drizzle-orm';
 import { db, withTransaction } from '../src/db/client';
 import { files } from '../src/db/schema';
-import { UPLOADS_DIR } from '../src/utils/constants';
-import { hashFile } from '../src/utils/hashing';
-import { lockFileStorage } from '../src/utils/dedup';
+import { UPLOADS_DIR } from '../src/config/constants';
+import { hashFile } from '../src/files/hashing';
+import { lockFileStorage } from '../src/files/dedup';
 
 // Scan both managed locations, including legacy files without database rows.
 // Other directories (ZIP caches, etc.) are intentionally outside this migration.

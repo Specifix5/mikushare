@@ -3,8 +3,8 @@ import { eq, isNull } from 'drizzle-orm';
 import path from 'path';
 import { db } from '../src/db/client';
 import { files } from '../src/db/schema';
-import { UPLOADS_DIR } from '../src/utils/constants';
-import { hashFile } from '../src/utils/hashing';
+import { UPLOADS_DIR } from '../src/config/constants';
+import { hashFile } from '../src/files/hashing';
 
 let count = 0;
 const rows = await db.select().from(files).where(isNull(files.sha256));

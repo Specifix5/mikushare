@@ -2,6 +2,7 @@
 <main class="admin-container" id="adminPanel">
   <div class="admin-toolbar">
     <h1><span class="blue"><%= webname %></span> admin</h1>
+    <a href="/">[ home ]</a>
     <button type="button" class="link-button" id="adminRefresh">[ refresh ]</button>
     <button type="button" class="link-button" id="adminLogout">[ sign out ]</button>
   </div>
@@ -19,14 +20,16 @@
   </section>
   <section class="admin-section" aria-labelledby="accountsHeading">
   <h2 id="accountsHeading">Accounts</h2>
-  <p class="admin-note">Deleting an account keeps its files and transfers them to anonymous.</p>
+  <p class="admin-note">Public accounts cannot browse previous uploads. Anonymous is always public. Deleting an account keeps its files and transfers them to anonymous.</p>
   <form id="createAccount" class="admin-create-form">
     <label>Username<input id="newUser" type="text" required pattern="[a-zA-Z0-9_-]{1,64}" maxlength="64" /></label>
+    <label>Token (optional)<input id="customToken" type="password" autocomplete="new-password" maxlength="512" placeholder="Leave blank to generate" /></label>
     <label>Expires (optional)<input id="userExpiry" type="datetime-local" /></label>
+    <label><input id="newPublic" type="checkbox" /> Public (shared token)</label>
     <button type="submit" class="link-button">[ create account ]</button>
   </form>
   <div class="table-container">
-    <table class="admin-account-table"><thead><tr><th>Account</th><th>Created</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="adminUsers"></tbody></table>
+    <table class="admin-account-table"><thead><tr><th>Account</th><th>Access</th><th>Created</th><th>Expires</th><th>Actions</th></tr></thead><tbody id="adminUsers"></tbody></table>
   </div>
   </section>
   <section class="admin-section" aria-labelledby="cleanupHeading">

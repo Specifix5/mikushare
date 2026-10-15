@@ -1,4 +1,4 @@
-import { databaseURL } from '../src/utils/env';
+import { databaseURL } from '../src/config/env';
 import { Database } from 'bun:sqlite';
 import { drizzle as drizzlePg } from 'drizzle-orm/bun-sql';
 import { SQL } from 'bun';
