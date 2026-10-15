@@ -80,7 +80,12 @@ async function build() {
   if (!server.success)
     throw new Error(server.logs.map((log) => log.message).join('\n'));
 
-  await cp('src/public', 'dist/public', { recursive: true });
+  // Browser sources are bundled below; copy only static assets to the public output.
+  await cp('src/public', 'dist/public', {
+    recursive: true,
+    filter: (source) =>
+      path.resolve(source) !== path.resolve('src/public/scripts'),
+  });
   await mkdir('dist/pages', { recursive: true });
 
   // render all pages
@@ -114,12 +119,12 @@ async function build() {
   }
 
   const browserEntries = {
-    index: 'src/uploads/client.js',
-    history: 'src/accounts/history-client.js',
-    file: 'src/files/client.js',
-    collection: 'src/collections/client.js',
-    text: 'src/texts/client.js',
-    admin: 'src/admin/client.js',
+    index: 'src/public/scripts/uploads/client.js',
+    history: 'src/public/scripts/accounts/history-client.js',
+    file: 'src/public/scripts/files/client.js',
+    collection: 'src/public/scripts/collections/client.js',
+    text: 'src/public/scripts/texts/client.js',
+    admin: 'src/public/scripts/admin/client.js',
   };
   for (const [name, source] of Object.entries(browserEntries)) {
     const result = await Bun.build({

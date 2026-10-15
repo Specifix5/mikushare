@@ -5,7 +5,7 @@ import {
   hitsAnnotation,
   pointOnPage,
   validateAnnotations,
-} from '../src/pdf/annotations.js';
+} from '../src/public/scripts/pdf/annotations.js';
 import { pdfAssetResponse } from '../src/pdf/assets';
 
 const pen = {

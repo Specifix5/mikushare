@@ -6,10 +6,10 @@ export const buildPDF = async () => {
   const target = 'dist/public/pdf';
   await mkdir(target, { recursive: true });
   for (const [source, name, external] of [
-    ['src/pdf/viewer.js', 'viewer.min.js', ['./export.min.js']],
-    ['src/pdf/export.js', 'export.min.js', []],
+    ['src/public/scripts/pdf/viewer.js', 'viewer.min.js', ['./export.min.js']],
+    ['src/public/scripts/pdf/export.js', 'export.min.js', []],
     ['src/pdf/viewer.css', 'viewer.min.css', []],
-    ['src/pdf/worker.js', 'pdf.worker.min.mjs', []],
+    ['src/public/scripts/pdf/worker.js', 'pdf.worker.min.mjs', []],
   ] as const) {
     const result = await Bun.build({
       entrypoints: [source],

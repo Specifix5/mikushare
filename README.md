@@ -75,10 +75,10 @@ Download buttons point to `FILES_URL`. Keep `/file-info/`, `/file-cover/`, and
 previews support byte ranges and check expiry before serving content.
 
 The file pages share EJS partials in `src/pages/partials/` and browser components
-in `src/ui/file-components.js`.
+in `src/public/scripts/ui/file-components.js`.
 
-Multi-file uploads always create a collection. The uploader locks collection mode
-when more than one file is selected; single-file collections remain optional.
+Multi-file uploads always create a collection. The uploader shows a collection name field
+only when more than one file is selected; single uploads remain standalone.
 Blank collection names become `Unnamed Collection #1`, `#2`, and so on, using a
 persistent PostgreSQL sequence so concurrent requests receive distinct numbers.
 The sequence is created during startup or by `bun run migrate:collections`.
@@ -95,8 +95,9 @@ bun test tests/file-view.test.ts tests/pdf.test.ts
 
 ### PDF viewer
 
-`src/pdf/` owns the PDF.js renderer, worker, viewer template, styles, SVG
-annotations, vector PDF export, compressed asset serving, and build step.
+`src/public/scripts/pdf/` contains the PDF.js renderer, worker, SVG annotations,
+and vector PDF export. `src/pdf/` contains its template, styles, compressed asset
+serving, and build step.
 The custom toolbar supports page navigation, selectable text, zoom, fit width,
 and fullscreen (with an expanded-page fallback). Controls use the site's
 square edges, typography, and colors.
@@ -118,25 +119,27 @@ always available through the direct-view link.
 
 ### Source layout
 
-Server and browser modules live together by purpose; browser entrypoints are
-mapped to their public bundle names in `build-tools/build.ts`.
+Server modules are grouped by purpose. Browser JavaScript lives separately in
+`src/public/scripts/`, grouped by feature, with reusable components in `ui/`.
+Browser entrypoints are mapped to their public bundle names in
+`build-tools/build.ts`. Only compiled bundles are copied into the deployed
+`dist/public/`; browser source modules are excluded from the static asset copy.
 
 ```text
 src/
   accounts/     Account service, tokens, CLI and terminal commands
-  admin/        Admin routes, authentication, storage and browser UI
-  collections/  Collection routes, persistence, ZIPs and browser UI
+  admin/        Admin routes, authentication, storage
+  collections/  Collection routes, persistence, ZIPs
   config/       Validated environment settings and constants
   core/         Shared HTTP helpers, cleanup, logging and error pages
   db/           Database client and schema
-  files/        File routes, pages, metadata, storage and browser UI
+  files/        File routes, pages, metadata, storage
   pages/        Page templates and shared EJS partials
-  pdf/          Custom PDF viewer and annotation/export modules
-  public/       Static images, icons, manifest and shared styles
+  pdf/          PDF template, styles, asset serving and build
+  public/       Browser scripts by feature, static assets and shared styles
   sharing/      QR codes and social embeds
-  texts/        Text paste routes, validation and browser UI
-  ui/           Shared browser components
-  uploads/      Upload routes, chunks, streaming and image conversion
+  texts/        Text paste routes, validation
+  uploads/      Upload routes, chunks and streaming
 ```
 
 ### Migrating from SQLite
